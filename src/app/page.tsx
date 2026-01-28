@@ -27,6 +27,9 @@ type Copy = {
   inhale: string;
   hold: string;
   exhale: string;
+  inhaleWord: string;
+  holdWord: string;
+  exhaleWord: string;
   seconds: string;
   noise: string;
   noiseTip: string;
@@ -39,6 +42,8 @@ type Copy = {
   minutes: string;
   statusRunning: string;
   statusIdle: string;
+  statusNotSet: string;
+  noTimer: string;
   guide: string;
   guideItems: string[];
   footer: string;
@@ -57,18 +62,23 @@ const copy: Record<Lang, Copy> = {
     inhale: "吸气",
     hold: "屏息",
     exhale: "呼气",
+    inhaleWord: "吸气",
+    holdWord: "屏息",
+    exhaleWord: "呼气",
     seconds: "秒",
     noise: "助眠噪音",
-    noiseTip: "可与呼吸音效同时播放。",
+    noiseTip: "人声引导可与助眠噪音同时播放。",
     noiseNone: "无噪音",
     white: "白噪音",
     pink: "粉红噪音",
     volume: "音量",
     timer: "定时关闭",
-    timerTip: "时间到自动停止播放。",
+    timerTip: "默认不启用，选择时长后生效。",
     minutes: "分钟",
     statusRunning: "计时中",
     statusIdle: "未启动",
+    statusNotSet: "未设置",
+    noTimer: "不启用",
     guide: "放松建议",
     guideItems: [
       "调暗屏幕与环境灯光",
@@ -89,18 +99,23 @@ const copy: Record<Lang, Copy> = {
     inhale: "Inhale",
     hold: "Hold",
     exhale: "Exhale",
+    inhaleWord: "Inhale",
+    holdWord: "Hold",
+    exhaleWord: "Exhale",
     seconds: "sec",
     noise: "Sleep Noise",
-    noiseTip: "Breathing tones can play together with noise.",
+    noiseTip: "Voice cues can play together with noise.",
     noiseNone: "None",
     white: "White Noise",
     pink: "Pink Noise",
     volume: "Volume",
     timer: "Sleep Timer",
-    timerTip: "Stops playback when time ends.",
+    timerTip: "Off by default. Choose a duration to enable.",
     minutes: "minutes",
     statusRunning: "Running",
     statusIdle: "Idle",
+    statusNotSet: "Not set",
+    noTimer: "No timer",
     guide: "Wind-down tips",
     guideItems: [
       "Dim screens and ambient light",
@@ -132,16 +147,18 @@ const loadPrefs = () => {
 
 export default function Home() {
   const initial = loadPrefs();
-  const [lang, setLang] = useState<Lang>(() => initial?.lang ?? "zh");
+  const [lang, setLang] = useState<Lang>(() => initial?.lang ?? "en");
   const [rhythmId, setRhythmId] = useState<string>(() => initial?.rhythmId ?? "relax");
   const [customRhythm, setCustomRhythm] = useState(() => initial?.customRhythm ?? {
     inhale: 4,
     hold: 4,
     exhale: 6,
   });
-  const [noiseType, setNoiseType] = useState<NoiseType>(() => initial?.noiseType ?? "pink");
-  const [volume, setVolume] = useState(() => initial?.volume ?? 0.4);
-  const [timerMinutes, setTimerMinutes] = useState(() => initial?.timerMinutes ?? 30);
+  const [noiseType, setNoiseType] = useState<NoiseType>(() => initial?.noiseType ?? "none");
+  const [volume, setVolume] = useState(() => initial?.volume ?? 0.2);
+  const [timerMinutes, setTimerMinutes] = useState<number | null>(
+    () => initial?.timerMinutes ?? null
+  );
   const [remaining, setRemaining] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [sessionRunning, setSessionRunning] = useState(false);
@@ -149,7 +166,6 @@ export default function Home() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const noiseSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const noiseGainRef = useRef<GainNode | null>(null);
-  const cueGainRef = useRef<GainNode | null>(null);
   const cueTimeoutsRef = useRef<number[]>([]);
   const cycleTimeoutRef = useRef<number | null>(null);
   const sessionRunningRef = useRef(false);
@@ -208,11 +224,6 @@ export default function Home() {
     }
     if (audioCtxRef.current.state === "suspended") {
       await audioCtxRef.current.resume();
-    }
-    if (!cueGainRef.current && audioCtxRef.current) {
-      cueGainRef.current = audioCtxRef.current.createGain();
-      cueGainRef.current.gain.value = 0.2;
-      cueGainRef.current.connect(audioCtxRef.current.destination);
     }
   };
 
@@ -281,23 +292,16 @@ export default function Home() {
     }
   }, []);
 
-  const playCue = (type: "inhale" | "hold" | "exhale") => {
-    if (!audioCtxRef.current || !cueGainRef.current) return;
-    const ctx = audioCtxRef.current;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const freq = type === "inhale" ? 396 : type === "hold" ? 528 : 333;
-    osc.frequency.value = freq;
-    osc.type = "sine";
-    gain.gain.value = 0.18;
-    osc.connect(gain);
-    gain.connect(cueGainRef.current);
-    const now = ctx.currentTime;
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.15, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
-    osc.start(now);
-    osc.stop(now + 0.4);
+  const speakCue = (text: string) => {
+    if (typeof window === "undefined") return;
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = lang === "zh" ? "zh-CN" : "en-US";
+    utter.volume = 1;
+    utter.rate = 0.9;
+    utter.pitch = 1;
+    window.speechSynthesis.speak(utter);
   };
 
   const clearCues = useCallback(() => {
@@ -307,6 +311,9 @@ export default function Home() {
       window.clearTimeout(cycleTimeoutRef.current);
       cycleTimeoutRef.current = null;
     }
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
   }, []);
 
   const scheduleBreathCycle = () => {
@@ -315,28 +322,17 @@ export default function Home() {
     const holdMs = rhythm.hold * 1000;
     const exhaleMs = rhythm.exhale * 1000;
 
-    playCue("inhale");
+    speakCue(t.inhaleWord);
     cueTimeoutsRef.current.push(
-      window.setTimeout(() => playCue("hold"), inhaleMs)
+      window.setTimeout(() => speakCue(t.holdWord), inhaleMs)
     );
     cueTimeoutsRef.current.push(
-      window.setTimeout(() => playCue("exhale"), inhaleMs + holdMs)
+      window.setTimeout(() => speakCue(t.exhaleWord), inhaleMs + holdMs)
     );
 
     cycleTimeoutRef.current = window.setTimeout(() => {
       if (sessionRunningRef.current) scheduleBreathCycle();
     }, inhaleMs + holdMs + exhaleMs);
-  };
-
-  const startSession = async () => {
-    if (sessionRunning) return;
-    await ensureAudioContext();
-    startNoise();
-    setRemaining(timerMinutes * 60);
-    setTimerRunning(true);
-    setSessionRunning(true);
-    sessionRunningRef.current = true;
-    scheduleBreathCycle();
   };
 
   const stopSession = useCallback(() => {
@@ -361,6 +357,22 @@ export default function Home() {
     }, 1000);
     return () => window.clearInterval(id);
   }, [stopSession, timerRunning]);
+
+  const startSession = async () => {
+    if (sessionRunning) return;
+    await ensureAudioContext();
+    startNoise();
+    if (timerMinutes) {
+      setRemaining(timerMinutes * 60);
+      setTimerRunning(true);
+    } else {
+      setRemaining(0);
+      setTimerRunning(false);
+    }
+    setSessionRunning(true);
+    sessionRunningRef.current = true;
+    scheduleBreathCycle();
+  };
 
   const toggleSession = () => {
     if (sessionRunning) {
@@ -533,14 +545,29 @@ export default function Home() {
                   {m} {t.minutes}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setTimerMinutes(null)}
+                className={`rounded-2xl border px-3 py-2 text-sm transition ${
+                  timerMinutes === null
+                    ? "border-emerald-400 bg-emerald-50 text-emerald-900"
+                    : "border-zinc-200 text-zinc-600 hover:border-emerald-200"
+                }`}
+              >
+                {t.noTimer}
+              </button>
             </div>
 
             <div className="mt-5 rounded-2xl bg-emerald-50 p-4 text-center">
               <div className="text-2xl font-semibold">
-                {timerRunning ? formatTime(remaining) : "00:00"}
+                {timerRunning ? formatTime(remaining) : "--:--"}
               </div>
               <div className="mt-1 text-xs text-emerald-700">
-                {timerRunning ? t.statusRunning : t.statusIdle}
+                {timerRunning
+                  ? t.statusRunning
+                  : timerMinutes
+                    ? t.statusIdle
+                    : t.statusNotSet}
               </div>
             </div>
           </section>
