@@ -134,31 +134,17 @@ const presets: RhythmPreset[] = [
 
 const minuteOptions = [10, 15, 20, 30, 45, 60, 90];
 
-const loadPrefs = () => {
-  if (typeof window === "undefined") return null;
-  const saved = window.localStorage.getItem("quietsleep_prefs");
-  if (!saved) return null;
-  try {
-    return JSON.parse(saved);
-  } catch {
-    return null;
-  }
-};
-
 export default function Home() {
-  const initial = loadPrefs();
-  const [lang, setLang] = useState<Lang>(() => initial?.lang ?? "en");
-  const [rhythmId, setRhythmId] = useState<string>(() => initial?.rhythmId ?? "relax");
-  const [customRhythm, setCustomRhythm] = useState(() => initial?.customRhythm ?? {
+  const [lang, setLang] = useState<Lang>("en");
+  const [rhythmId, setRhythmId] = useState<string>("relax");
+  const [customRhythm, setCustomRhythm] = useState({
     inhale: 4,
     hold: 4,
     exhale: 6,
   });
-  const [noiseType, setNoiseType] = useState<NoiseType>(() => initial?.noiseType ?? "none");
-  const [volume, setVolume] = useState(() => initial?.volume ?? 0.2);
-  const [timerMinutes, setTimerMinutes] = useState<number | null>(
-    () => initial?.timerMinutes ?? null
-  );
+  const [noiseType, setNoiseType] = useState<NoiseType>("none");
+  const [volume, setVolume] = useState(0.2);
+  const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [sessionRunning, setSessionRunning] = useState(false);
@@ -183,6 +169,25 @@ export default function Home() {
   const holdPercent = ((rhythm.inhale + rhythm.hold) / cycleSeconds) * 100;
   const circleSize = Math.min(240, 160 + rhythm.inhale * 10);
   const circleScale = Math.min(1.2, 0.85 + rhythm.inhale * 0.04);
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("quietsleep_prefs");
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed.lang) setLang(parsed.lang);
+      if (parsed.rhythmId) setRhythmId(parsed.rhythmId);
+      if (parsed.customRhythm) setCustomRhythm(parsed.customRhythm);
+      if (parsed.noiseType) setNoiseType(parsed.noiseType);
+      if (parsed.volume !== undefined) setVolume(parsed.volume);
+      if (parsed.timerMinutes !== undefined) setTimerMinutes(parsed.timerMinutes);
+    } catch {
+      // ignore
+    }
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (typeof window === "undefined") return;
