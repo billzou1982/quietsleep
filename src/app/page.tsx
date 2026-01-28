@@ -169,6 +169,7 @@ export default function Home() {
   const cueTimeoutsRef = useRef<number[]>([]);
   const cycleTimeoutRef = useRef<number | null>(null);
   const sessionRunningRef = useRef(false);
+  const voiceRef = useRef<{ inhale: HTMLAudioElement; hold: HTMLAudioElement; exhale: HTMLAudioElement } | null>(null);
 
   const t = useMemo(() => copy[lang], [lang]);
 
@@ -203,6 +204,10 @@ export default function Home() {
   }, [sessionRunning]);
 
   useEffect(() => {
+    voiceRef.current = null;
+  }, [lang]);
+
+  useEffect(() => {
     if (noiseGainRef.current) {
       noiseGainRef.current.gain.value = volume;
     }
@@ -225,6 +230,21 @@ export default function Home() {
     if (audioCtxRef.current.state === "suspended") {
       await audioCtxRef.current.resume();
     }
+  };
+
+  const ensureVoice = () => {
+    if (typeof window === "undefined") return;
+    if (voiceRef.current) return;
+    const prefix = lang === "zh" ? "zh" : "en";
+    voiceRef.current = {
+      inhale: new Audio(`/audio/${prefix}-inhale.mp3`),
+      hold: new Audio(`/audio/${prefix}-hold.mp3`),
+      exhale: new Audio(`/audio/${prefix}-exhale.mp3`),
+    };
+    Object.values(voiceRef.current).forEach((audio) => {
+      audio.volume = 0.9;
+      audio.preload = "auto";
+    });
   };
 
   const createWhiteNoise = (ctx: AudioContext) => {
@@ -292,16 +312,12 @@ export default function Home() {
     }
   }, []);
 
-  const speakCue = (text: string) => {
-    if (typeof window === "undefined") return;
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = lang === "zh" ? "zh-CN" : "en-US";
-    utter.volume = 1;
-    utter.rate = 0.9;
-    utter.pitch = 1;
-    window.speechSynthesis.speak(utter);
+  const playVoice = (type: "inhale" | "hold" | "exhale") => {
+    if (!voiceRef.current) return;
+    const audio = voiceRef.current[type];
+    audio.pause();
+    audio.currentTime = 0;
+    void audio.play();
   };
 
   const clearCues = useCallback(() => {
@@ -311,9 +327,6 @@ export default function Home() {
       window.clearTimeout(cycleTimeoutRef.current);
       cycleTimeoutRef.current = null;
     }
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
   }, []);
 
   const scheduleBreathCycle = () => {
@@ -322,12 +335,12 @@ export default function Home() {
     const holdMs = rhythm.hold * 1000;
     const exhaleMs = rhythm.exhale * 1000;
 
-    speakCue(t.inhaleWord);
+    playVoice("inhale");
     cueTimeoutsRef.current.push(
-      window.setTimeout(() => speakCue(t.holdWord), inhaleMs)
+      window.setTimeout(() => playVoice("hold"), inhaleMs)
     );
     cueTimeoutsRef.current.push(
-      window.setTimeout(() => speakCue(t.exhaleWord), inhaleMs + holdMs)
+      window.setTimeout(() => playVoice("exhale"), inhaleMs + holdMs)
     );
 
     cycleTimeoutRef.current = window.setTimeout(() => {
@@ -361,6 +374,7 @@ export default function Home() {
   const startSession = async () => {
     if (sessionRunning) return;
     await ensureAudioContext();
+    ensureVoice();
     startNoise();
     if (timerMinutes) {
       setRemaining(timerMinutes * 60);
