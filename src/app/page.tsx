@@ -183,20 +183,6 @@ export default function Home() {
   }, [lang, rhythmId, customRhythm, noiseType, volume, timerMinutes]);
 
   useEffect(() => {
-    if (!timerRunning) return;
-    const id = window.setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) {
-          stopSession();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => window.clearInterval(id);
-  }, [stopSession, timerRunning]);
-
-  useEffect(() => {
     sessionRunningRef.current = sessionRunning;
   }, [sessionRunning]);
 
@@ -361,6 +347,20 @@ export default function Home() {
     clearCues();
     stopNoise();
   }, [clearCues, stopNoise]);
+
+  useEffect(() => {
+    if (!timerRunning) return;
+    const id = window.setInterval(() => {
+      setRemaining((prev) => {
+        if (prev <= 1) {
+          stopSession();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [stopSession, timerRunning]);
 
   const toggleSession = () => {
     if (sessionRunning) {
