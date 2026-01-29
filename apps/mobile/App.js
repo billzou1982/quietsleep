@@ -270,12 +270,6 @@ export default function App() {
 
   const startSession = useCallback(async () => {
     if (sessionRunning) return;
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: false,
-    });
-    await ensureVoice();
-    await ensureNoise();
     setSessionRunning(true);
     sessionRunningRef.current = true;
     startBreathingAnim();
@@ -283,6 +277,16 @@ export default function App() {
     if (timerMinutes) {
       setRemaining(timerMinutes * 60);
       setTimerRunning(true);
+    }
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      });
+      await ensureVoice();
+      await ensureNoise();
+    } catch {
+      // allow UI to run even if audio fails
     }
   }, [ensureNoise, ensureVoice, scheduleBreathCycle, sessionRunning, startBreathingAnim, timerMinutes]);
 
