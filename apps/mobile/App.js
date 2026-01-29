@@ -1,16 +1,26 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
+  Platform,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
-  Pressable,
-  ScrollView,
-  Platform,
-  Animated,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import Slider from "@react-native-community/slider";
+import { Audio } from "expo-av";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import enInhale from "./assets/voice/en-inhale.mp3";
+import enHold from "./assets/voice/en-hold.mp3";
+import enExhale from "./assets/voice/en-exhale.mp3";
+import zhInhale from "./assets/voice/zh-inhale.mp3";
+import zhHold from "./assets/voice/zh-hold.mp3";
+import zhExhale from "./assets/voice/zh-exhale.mp3";
+import whiteNoise from "./assets/audio/white.wav";
+import pinkNoise from "./assets/audio/pink.wav";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -20,48 +30,295 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const rhythmPresets = [
-  { id: "box", label: "Box 4-4-4", inhale: 4, hold: 4, exhale: 4 },
-  { id: "478", label: "Classic 4-7-8", inhale: 4, hold: 7, exhale: 8 },
-  { id: "relax", label: "Relax 4-4-6", inhale: 4, hold: 4, exhale: 6 },
+const copy = {
+  en: {
+    title: "QuietSleep",
+    subtitle: "A minimal, gentle sleep aid: breathing, noise, and timer.",
+    start: "Start",
+    stop: "Stop",
+    breathe: "Sleep Guide",
+    breatheTip: "Pick a rhythm and duration. Circle size reflects your breath time.",
+    rhythm: "Breathing rhythm",
+    custom: "Custom",
+    inhale: "Inhale",
+    hold: "Hold",
+    exhale: "Exhale",
+    seconds: "sec",
+    noise: "Sleep Noise",
+    noiseTip: "Voice cues can play together with noise.",
+    noiseNone: "None",
+    white: "White Noise",
+    pink: "Pink Noise",
+    volume: "Volume",
+    timer: "Sleep Timer",
+    timerTip: "Off by default. Choose a duration to enable.",
+    minutes: "minutes",
+    statusRunning: "Running",
+    statusIdle: "Idle",
+    statusNotSet: "Not set",
+    noTimer: "No timer",
+    guide: "Wind-down tips",
+    guideItems: [
+      "Dim screens and ambient light",
+      "Avoid stimulating content 30 mins before bed",
+      "Keep the room slightly cool and ventilated",
+    ],
+    pushTitle: "Push notifications",
+    pushHint: "Enable notifications and copy the Expo token.",
+    pushButton: "Enable notifications",
+  },
+  zh: {
+    title: "轻眠 · QuietSleep",
+    subtitle: "极简、柔和的助眠工具。呼吸引导 + 白/粉红噪音 + 定时关闭。",
+    start: "一键开始",
+    stop: "一键停止",
+    breathe: "睡眠引导",
+    breatheTip: "选择节奏与时长，圆圈大小随呼吸时间变化。",
+    rhythm: "呼吸节奏",
+    custom: "自定义",
+    inhale: "吸气",
+    hold: "屏息",
+    exhale: "呼气",
+    seconds: "秒",
+    noise: "助眠噪音",
+    noiseTip: "人声引导可与助眠噪音同时播放。",
+    noiseNone: "无噪音",
+    white: "白噪音",
+    pink: "粉红噪音",
+    volume: "音量",
+    timer: "定时关闭",
+    timerTip: "默认不启用，选择时长后生效。",
+    minutes: "分钟",
+    statusRunning: "计时中",
+    statusIdle: "未启动",
+    statusNotSet: "未设置",
+    noTimer: "不启用",
+    guide: "放松建议",
+    guideItems: [
+      "调暗屏幕与环境灯光",
+      "睡前 30 分钟避免高刺激内容",
+      "保持房间略微偏凉、通风",
+    ],
+    pushTitle: "推送通知",
+    pushHint: "启用通知并获取 Expo token。",
+    pushButton: "开启通知",
+  },
+};
+
+const presets = [
+  { id: "box", zh: "Box 4-4-4", en: "Box 4-4-4", inhale: 4, hold: 4, exhale: 4 },
+  { id: "478", zh: "经典 4-7-8", en: "Classic 4-7-8", inhale: 4, hold: 7, exhale: 8 },
+  { id: "relax", zh: "舒缓 4-4-6", en: "Relax 4-4-6", inhale: 4, hold: 4, exhale: 6 },
 ];
 
-const timerOptions = [10, 15, 20, 30, 45, 60, 90];
+const minuteOptions = [10, 15, 20, 30, 45, 60, 90];
+
+const voiceAssets = {
+  en: {
+    inhale: enInhale,
+    hold: enHold,
+    exhale: enExhale,
+  },
+  zh: {
+    inhale: zhInhale,
+    hold: zhHold,
+    exhale: zhExhale,
+  },
+};
+
+const noiseAssets = {
+  white: whiteNoise,
+  pink: pinkNoise,
+};
 
 export default function App() {
-  const [language, setLanguage] = useState("en");
-  const [presetId, setPresetId] = useState("relax");
+  const [lang, setLang] = useState("en");
+  const [rhythmId, setRhythmId] = useState("relax");
+  const [customRhythm, setCustomRhythm] = useState({ inhale: 4, hold: 4, exhale: 6 });
+  const [noiseType, setNoiseType] = useState("none");
+  const [volume, setVolume] = useState(0.2);
   const [timerMinutes, setTimerMinutes] = useState(null);
+  const [remaining, setRemaining] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [sessionRunning, setSessionRunning] = useState(false);
   const [pushToken, setPushToken] = useState("");
   const [scaleAnim] = useState(() => new Animated.Value(1));
 
-  const preset = useMemo(
-    () => rhythmPresets.find((item) => item.id === presetId) ?? rhythmPresets[2],
-    [presetId]
-  );
+  const noiseRef = useRef(null);
+  const voiceRef = useRef({ inhale: null, hold: null, exhale: null });
+  const timeoutsRef = useRef([]);
+  const cycleTimeoutRef = useRef(null);
+  const sessionRunningRef = useRef(false);
+  const scheduleRef = useRef(() => {});
 
-  const startBreathing = useCallback(() => {
+  const t = useMemo(() => copy[lang], [lang]);
+
+  const rhythm = useMemo(() => {
+    if (rhythmId === "custom") return customRhythm;
+    return presets.find((item) => item.id === rhythmId) ?? presets[2];
+  }, [customRhythm, rhythmId]);
+
+  const circleSize = Math.min(240, 160 + rhythm.inhale * 10);
+  const circleScale = Math.min(1.2, 0.85 + rhythm.inhale * 0.04);
+
+  useEffect(() => {
+    sessionRunningRef.current = sessionRunning;
+  }, [sessionRunning]);
+
+  useEffect(() => {
+    if (noiseRef.current) {
+      noiseRef.current.setVolumeAsync(volume);
+    }
+  }, [volume]);
+
+  // cleanup handled below
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = Math.floor(seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
+  const startBreathingAnim = useCallback(() => {
     Animated.loop(
       Animated.sequence([
         Animated.timing(scaleAnim, {
-          toValue: 1.15,
-          duration: preset.inhale * 1000,
+          toValue: circleScale,
+          duration: rhythm.inhale * 1000,
           useNativeDriver: true,
         }),
-        Animated.delay(preset.hold * 1000),
+        Animated.delay(rhythm.hold * 1000),
         Animated.timing(scaleAnim, {
-          toValue: 0.9,
-          duration: preset.exhale * 1000,
+          toValue: 0.85,
+          duration: rhythm.exhale * 1000,
           useNativeDriver: true,
         }),
       ])
     ).start();
-  }, [preset.exhale, preset.hold, preset.inhale, scaleAnim]);
+  }, [circleScale, rhythm.exhale, rhythm.hold, rhythm.inhale, scaleAnim]);
 
-  const stopBreathing = useCallback(() => {
+  const stopBreathingAnim = useCallback(() => {
     scaleAnim.stopAnimation();
     scaleAnim.setValue(1);
   }, [scaleAnim]);
+
+  const ensureVoice = useCallback(async () => {
+    const pack = voiceAssets[lang];
+    const inhale = await Audio.Sound.createAsync(pack.inhale, { volume: 0.9 });
+    const hold = await Audio.Sound.createAsync(pack.hold, { volume: 0.9 });
+    const exhale = await Audio.Sound.createAsync(pack.exhale, { volume: 0.9 });
+    voiceRef.current = { inhale: inhale.sound, hold: hold.sound, exhale: exhale.sound };
+  }, [lang]);
+
+  const ensureNoise = useCallback(async () => {
+    if (noiseType === "none") return;
+    const asset = noiseType === "white" ? noiseAssets.white : noiseAssets.pink;
+    const sound = await Audio.Sound.createAsync(asset, { volume, isLooping: true });
+    noiseRef.current = sound.sound;
+    await noiseRef.current.playAsync();
+  }, [noiseType, volume]);
+
+  const stopNoise = useCallback(async () => {
+    if (!noiseRef.current) return;
+    await noiseRef.current.stopAsync();
+    await noiseRef.current.unloadAsync();
+    noiseRef.current = null;
+  }, []);
+
+  const playVoice = async (type) => {
+    const sound = voiceRef.current[type];
+    if (!sound) return;
+    try {
+      await sound.stopAsync();
+      await sound.playAsync();
+    } catch {
+      // ignore
+    }
+  };
+
+  const clearCues = useCallback(() => {
+    timeoutsRef.current.forEach((id) => clearTimeout(id));
+    timeoutsRef.current = [];
+    if (cycleTimeoutRef.current) {
+      clearTimeout(cycleTimeoutRef.current);
+      cycleTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleBreathCycle = useCallback(() => {
+    clearCues();
+    const inhaleMs = rhythm.inhale * 1000;
+    const holdMs = rhythm.hold * 1000;
+    const exhaleMs = rhythm.exhale * 1000;
+
+    playVoice("inhale");
+    timeoutsRef.current.push(setTimeout(() => playVoice("hold"), inhaleMs));
+    timeoutsRef.current.push(setTimeout(() => playVoice("exhale"), inhaleMs + holdMs));
+
+    cycleTimeoutRef.current = setTimeout(() => {
+      if (sessionRunningRef.current) scheduleRef.current();
+    }, inhaleMs + holdMs + exhaleMs);
+  }, [clearCues, rhythm.exhale, rhythm.hold, rhythm.inhale]);
+
+  const stopSession = useCallback(async () => {
+    setSessionRunning(false);
+    sessionRunningRef.current = false;
+    setTimerRunning(false);
+    setRemaining(0);
+    clearCues();
+    stopBreathingAnim();
+    await stopNoise();
+  }, [clearCues, stopBreathingAnim, stopNoise]);
+
+  useEffect(() => {
+    scheduleRef.current = scheduleBreathCycle;
+  }, [scheduleBreathCycle]);
+
+  useEffect(() => {
+    return () => {
+      stopSession();
+    };
+  }, [stopSession]);
+
+  useEffect(() => {
+    if (!timerRunning) return;
+    const id = setInterval(() => {
+      setRemaining((prev) => {
+        if (prev <= 1) {
+          stopSession();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [stopSession, timerRunning]);
+
+  const startSession = useCallback(async () => {
+    if (sessionRunning) return;
+    await Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+    });
+    await ensureVoice();
+    await ensureNoise();
+    setSessionRunning(true);
+    sessionRunningRef.current = true;
+    startBreathingAnim();
+    scheduleBreathCycle();
+    if (timerMinutes) {
+      setRemaining(timerMinutes * 60);
+      setTimerRunning(true);
+    }
+  }, [ensureNoise, ensureVoice, scheduleBreathCycle, sessionRunning, startBreathingAnim, timerMinutes]);
+
+  const toggleSession = () => {
+    if (sessionRunning) {
+      stopSession();
+    } else {
+      startSession();
+    }
+  };
 
   const registerForPushNotificationsAsync = useCallback(async () => {
     if (!Device.isDevice) {
@@ -98,153 +355,186 @@ export default function App() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>QuietSleep</Text>
-            <Text style={styles.subtitle}>
-              Minimal, gentle sleep aid with breathing, noise, and timer.
-            </Text>
+            <Text style={styles.title}>{t.title}</Text>
+            <Text style={styles.subtitle}>{t.subtitle}</Text>
           </View>
-          <View style={styles.langSwitcher}>
-            <Pressable
-              style={[
-                styles.langButton,
-                language === "zh" && styles.langButtonActive,
-              ]}
-              onPress={() => setLanguage("zh")}
-            >
-              <Text
-                style={[
-                  styles.langText,
-                  language === "zh" && styles.langTextActive,
-                ]}
-              >
-                中文
-              </Text>
+          <View style={styles.headerRight}>
+            <Pressable style={styles.primaryButton} onPress={toggleSession}>
+              <Text style={styles.primaryButtonText}>{sessionRunning ? t.stop : t.start}</Text>
             </Pressable>
-            <Pressable
-              style={[
-                styles.langButton,
-                language === "en" && styles.langButtonActive,
-              ]}
-              onPress={() => setLanguage("en")}
-            >
-              <Text
-                style={[
-                  styles.langText,
-                  language === "en" && styles.langTextActive,
-                ]}
+            <View style={styles.langSwitcher}>
+              <Pressable
+                style={[styles.langButton, lang === "zh" && styles.langButtonActive]}
+                onPress={() => setLang("zh")}
               >
-                EN
-              </Text>
-            </Pressable>
+                <Text style={[styles.langText, lang === "zh" && styles.langTextActive]}>中文</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.langButton, lang === "en" && styles.langButtonActive]}
+                onPress={() => setLang("en")}
+              >
+                <Text style={[styles.langText, lang === "en" && styles.langTextActive]}>EN</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Breathing rhythm</Text>
-          <Text style={styles.sectionHint}>
-            Inhale {preset.inhale}s · Hold {preset.hold}s · Exhale {preset.exhale}s
-          </Text>
+          <Text style={styles.sectionTitle}>{t.breathe}</Text>
+          <Text style={styles.sectionHint}>{t.breatheTip}</Text>
           <View style={styles.presetGrid}>
-            {rhythmPresets.map((item) => (
+            {presets.map((item) => (
               <Pressable
                 key={item.id}
-                style={[
-                  styles.presetButton,
-                  presetId === item.id && styles.presetButtonActive,
-                ]}
-                onPress={() => setPresetId(item.id)}
+                style={[styles.presetButton, rhythmId === item.id && styles.presetButtonActive]}
+                onPress={() => setRhythmId(item.id)}
               >
-                <Text
-                  style={[
-                    styles.presetTitle,
-                    presetId === item.id && styles.presetTitleActive,
-                  ]}
-                >
-                  {item.label}
+                <Text style={[styles.presetTitle, rhythmId === item.id && styles.presetTitleActive]}>
+                  {lang === "zh" ? item.zh : item.en}
                 </Text>
                 <Text style={styles.presetMeta}>
-                  {item.inhale}s · {item.hold}s · {item.exhale}s
+                  {t.inhale} {item.inhale}{t.seconds} · {t.hold} {item.hold}{t.seconds} · {t.exhale} {item.exhale}{t.seconds}
                 </Text>
               </Pressable>
             ))}
+            <Pressable
+              style={[styles.presetButton, rhythmId === "custom" && styles.presetButtonActive]}
+              onPress={() => setRhythmId("custom")}
+            >
+              <Text style={[styles.presetTitle, rhythmId === "custom" && styles.presetTitleActive]}>
+                {t.custom}
+              </Text>
+              <Text style={styles.presetMeta}>
+                {t.inhale} {customRhythm.inhale}{t.seconds} · {t.hold} {customRhythm.hold}{t.seconds} · {t.exhale} {customRhythm.exhale}{t.seconds}
+              </Text>
+            </Pressable>
           </View>
+
+          {rhythmId === "custom" && (
+            <View style={styles.customBox}>
+              {(["inhale", "hold", "exhale"]).map((key) => (
+                <View key={key} style={styles.customRow}>
+                  <Text style={styles.customLabel}>
+                    {key === "inhale" ? t.inhale : key === "hold" ? t.hold : t.exhale}
+                  </Text>
+                  <View style={styles.sliderRow}>
+                    <Slider
+                      style={{ flex: 1 }}
+                      minimumValue={2}
+                      maximumValue={10}
+                      step={1}
+                      minimumTrackTintColor="#84C9B2"
+                      maximumTrackTintColor="#E5E1DD"
+                      thumbTintColor="#1C5B4A"
+                      value={customRhythm[key]}
+                      onValueChange={(value) =>
+                        setCustomRhythm((prev) => ({ ...prev, [key]: value }))
+                      }
+                    />
+                    <Text style={styles.customValue}>{customRhythm[key]}{t.seconds}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
           <View style={styles.circleWrap}>
             <Animated.View
               style={[
                 styles.circle,
                 {
-                  width: 180 + preset.inhale * 8,
-                  height: 180 + preset.inhale * 8,
+                  width: circleSize,
+                  height: circleSize,
                   transform: [{ scale: scaleAnim }],
                 },
               ]}
             />
           </View>
-          <View style={styles.row}>
-            <Pressable style={styles.primaryButton} onPress={startBreathing}>
-              <Text style={styles.primaryButtonText}>Start</Text>
-            </Pressable>
-            <Pressable style={styles.secondaryButton} onPress={stopBreathing}>
-              <Text style={styles.secondaryButtonText}>Stop</Text>
-            </Pressable>
-          </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Sleep timer</Text>
-          <Text style={styles.sectionHint}>
-            {timerMinutes ? `${timerMinutes} minutes selected` : "No timer"}
-          </Text>
+          <Text style={styles.sectionTitle}>{t.timer}</Text>
+          <Text style={styles.sectionHint}>{t.timerTip}</Text>
           <View style={styles.timerGrid}>
-            {timerOptions.map((option) => (
+            {minuteOptions.map((option) => (
               <Pressable
                 key={option}
-                style={[
-                  styles.timerButton,
-                  timerMinutes === option && styles.timerButtonActive,
-                ]}
+                style={[styles.timerButton, timerMinutes === option && styles.timerButtonActive]}
                 onPress={() => setTimerMinutes(option)}
               >
-                <Text
-                  style={[
-                    styles.timerText,
-                    timerMinutes === option && styles.timerTextActive,
-                  ]}
-                >
-                  {option}m
+                <Text style={[styles.timerText, timerMinutes === option && styles.timerTextActive]}>
+                  {option} {t.minutes}
                 </Text>
               </Pressable>
             ))}
             <Pressable
-              style={[
-                styles.timerButton,
-                timerMinutes === null && styles.timerButtonActive,
-              ]}
+              style={[styles.timerButton, timerMinutes === null && styles.timerButtonActive]}
               onPress={() => setTimerMinutes(null)}
             >
-              <Text
-                style={[
-                  styles.timerText,
-                  timerMinutes === null && styles.timerTextActive,
-                ]}
-              >
-                Off
+              <Text style={[styles.timerText, timerMinutes === null && styles.timerTextActive]}>
+                {t.noTimer}
               </Text>
             </Pressable>
+          </View>
+          <View style={styles.timerPanel}>
+            <Text style={styles.timerTime}>{timerRunning ? formatTime(remaining) : "--:--"}</Text>
+            <Text style={styles.timerStatus}>
+              {timerRunning ? t.statusRunning : timerMinutes ? t.statusIdle : t.statusNotSet}
+            </Text>
           </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Push notifications</Text>
-          <Text style={styles.sectionHint}>
-            Register the device to receive gentle reminders.
-          </Text>
+          <Text style={styles.sectionTitle}>{t.noise}</Text>
+          <Text style={styles.sectionHint}>{t.noiseTip}</Text>
+          <View style={styles.sliderHeader}>
+            <Text style={styles.sliderLabel}>{t.volume}</Text>
+            <Slider
+              style={{ flex: 1 }}
+              minimumValue={0}
+              maximumValue={1}
+              step={0.01}
+              minimumTrackTintColor="#84C9B2"
+              maximumTrackTintColor="#E5E1DD"
+              thumbTintColor="#1C5B4A"
+              value={volume}
+              onValueChange={(value) => setVolume(value)}
+            />
+          </View>
+          <View style={styles.noiseRow}>
+            {["none", "white", "pink"].map((type) => (
+              <Pressable
+                key={type}
+                style={[styles.noiseButton, noiseType === type && styles.noiseButtonActive]}
+                onPress={() => setNoiseType(type)}
+              >
+                <Text style={[styles.noiseText, noiseType === type && styles.noiseTextActive]}>
+                  {type === "none" ? t.noiseNone : type === "white" ? t.white : t.pink}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>{t.guide}</Text>
+          {t.guideItems.map((item) => (
+            <View key={item} style={styles.tipRow}>
+              <View style={styles.tipDot} />
+              <Text style={styles.tipText}>{item}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>{t.pushTitle}</Text>
+          <Text style={styles.sectionHint}>{t.pushHint}</Text>
           <Pressable style={styles.primaryButton} onPress={registerForPushNotificationsAsync}>
-            <Text style={styles.primaryButtonText}>Enable notifications</Text>
+            <Text style={styles.primaryButtonText}>{t.pushButton}</Text>
           </Pressable>
           {pushToken ? (
             <Text style={styles.tokenText} selectable>
-              Expo token: {pushToken}
+              {pushToken}
             </Text>
           ) : null}
         </View>
@@ -269,6 +559,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     flexWrap: "wrap",
     gap: 12,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
   },
   title: {
     fontSize: 28,
@@ -358,6 +654,33 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#8C857D",
   },
+  customBox: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#D9EEE6",
+    backgroundColor: "#F3FBF7",
+    gap: 12,
+  },
+  customRow: {
+    gap: 6,
+  },
+  customLabel: {
+    fontSize: 12,
+    color: "#5C564F",
+  },
+  sliderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  customValue: {
+    fontSize: 12,
+    color: "#5C564F",
+    width: 50,
+    textAlign: "right",
+  },
   circleWrap: {
     alignItems: "center",
     justifyContent: "center",
@@ -370,33 +693,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
-  },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  primaryButton: {
-    flex: 1,
-    backgroundColor: "#1E1B18",
-    paddingVertical: 12,
-    borderRadius: 24,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-  },
-  secondaryButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#E5E1DD",
-    paddingVertical: 12,
-    borderRadius: 24,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    color: "#4E4741",
-    fontWeight: "600",
   },
   timerGrid: {
     marginTop: 12,
@@ -422,6 +718,89 @@ const styles = StyleSheet.create({
   timerTextActive: {
     color: "#1C5B4A",
     fontWeight: "600",
+  },
+  timerPanel: {
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: "#E7F6EF",
+    alignItems: "center",
+  },
+  timerTime: {
+    fontSize: 22,
+    fontWeight: "600",
+    color: "#2C2722",
+  },
+  timerStatus: {
+    marginTop: 4,
+    fontSize: 11,
+    color: "#1C5B4A",
+  },
+  sliderHeader: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  sliderLabel: {
+    fontSize: 12,
+    color: "#5C564F",
+    width: 52,
+  },
+  noiseRow: {
+    marginTop: 12,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  noiseButton: {
+    borderWidth: 1,
+    borderColor: "#E5E1DD",
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  noiseButtonActive: {
+    borderColor: "#84C9B2",
+    backgroundColor: "#84C9B2",
+  },
+  noiseText: {
+    fontSize: 12,
+    color: "#5C564F",
+  },
+  noiseTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  tipRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginTop: 8,
+  },
+  tipDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 6,
+    backgroundColor: "#84C9B2",
+  },
+  tipText: {
+    fontSize: 12,
+    color: "#6B655F",
+    flex: 1,
+  },
+  primaryButton: {
+    backgroundColor: "#1E1B18",
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 24,
+    alignItems: "center",
+  },
+  primaryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 12,
   },
   tokenText: {
     marginTop: 12,

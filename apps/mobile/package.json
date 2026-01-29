@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
+    "@react-native-community/slider": "^5.1.2",
     "expo": "~54.0.32",
+    "expo-av": "^16.0.8",
     "expo-device": "^8.0.10",
     "expo-notifications": "^0.32.16",
     "expo-status-bar": "~3.0.9",
