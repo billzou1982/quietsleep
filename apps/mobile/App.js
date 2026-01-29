@@ -195,12 +195,21 @@ export default function App() {
 
   const ensureVoice = useCallback(async () => {
     await unloadVoice();
-    const pack = voiceAssets[lang];
-    await Asset.loadAsync([pack.inhale, pack.hold, pack.exhale]);
-    const inhale = await Audio.Sound.createAsync(pack.inhale, { volume: 0.9 });
-    const hold = await Audio.Sound.createAsync(pack.hold, { volume: 0.9 });
-    const exhale = await Audio.Sound.createAsync(pack.exhale, { volume: 0.9 });
-    voiceRef.current = { inhale: inhale.sound, hold: hold.sound, exhale: exhale.sound };
+    try {
+      const pack = voiceAssets[lang];
+      await Asset.loadAsync([pack.inhale, pack.hold, pack.exhale]);
+      const inhale = await Audio.Sound.createAsync(pack.inhale, { volume: 0.9 });
+      const hold = await Audio.Sound.createAsync(pack.hold, { volume: 0.9 });
+      const exhale = await Audio.Sound.createAsync(pack.exhale, { volume: 0.9 });
+      voiceRef.current = { inhale: inhale.sound, hold: hold.sound, exhale: exhale.sound };
+    } catch {
+      const pack = voiceAssets.en;
+      await Asset.loadAsync([pack.inhale, pack.hold, pack.exhale]);
+      const inhale = await Audio.Sound.createAsync(pack.inhale, { volume: 0.9 });
+      const hold = await Audio.Sound.createAsync(pack.hold, { volume: 0.9 });
+      const exhale = await Audio.Sound.createAsync(pack.exhale, { volume: 0.9 });
+      voiceRef.current = { inhale: inhale.sound, hold: hold.sound, exhale: exhale.sound };
+    }
   }, [lang, unloadVoice]);
 
   const ensureNoise = useCallback(async () => {
@@ -311,13 +320,23 @@ export default function App() {
         playsInSilentModeIOS: true,
         staysActiveInBackground: false,
       });
+    } catch {
+      // ignore audio mode failure
+    }
+
+    try {
       await ensureVoice();
+    } catch {
+      // allow UI to run even if voice fails
+    }
+
+    try {
       await ensureNoise();
     } catch {
-      // allow UI to run even if audio fails
-    } finally {
-      scheduleBreathCycle();
+      // allow UI to run even if noise fails
     }
+
+    scheduleBreathCycle();
   }, [ensureNoise, ensureVoice, scheduleBreathCycle, sessionRunning, startBreathingAnim, timerMinutes]);
 
   const toggleSession = () => {
