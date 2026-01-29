@@ -58,8 +58,8 @@ const copy = {
   zh: {
     title: "轻眠 · QuietSleep",
     subtitle: "极简、柔和的助眠工具。呼吸引导 + 白/粉红噪音 + 定时关闭。",
-    start: "一键开始",
-    stop: "一键停止",
+    start: "开始",
+    stop: "停止",
     breathe: "睡眠引导",
     breatheTip: "选择节奏与时长，圆圈大小随呼吸时间变化。",
     rhythm: "呼吸节奏",
@@ -304,23 +304,18 @@ export default function App() {
             <Text style={styles.subtitle}>{t.subtitle}</Text>
           </View>
           <View style={styles.headerRight}>
-            <Pressable style={styles.primaryButton} onPress={toggleSession}>
-              <Text style={styles.primaryButtonText}>{sessionRunning ? t.stop : t.start}</Text>
-            </Pressable>
             <View style={styles.langSwitcher}>
-              <Pressable
-                style={[styles.langButton, lang === "zh" && styles.langButtonActive]}
-                onPress={() => setLang("zh")}
-              >
-                <Text style={[styles.langText, lang === "zh" && styles.langTextActive]}>
-                  中文
-                </Text>
-              </Pressable>
               <Pressable
                 style={[styles.langButton, lang === "en" && styles.langButtonActive]}
                 onPress={() => setLang("en")}
               >
                 <Text style={[styles.langText, lang === "en" && styles.langTextActive]}>EN</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.langButton, lang === "zh" && styles.langButtonActive]}
+                onPress={() => setLang("zh")}
+              >
+                <Text style={[styles.langText, lang === "zh" && styles.langTextActive]}>CN</Text>
               </Pressable>
             </View>
           </View>
@@ -329,6 +324,25 @@ export default function App() {
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>{t.breathe}</Text>
           <Text style={styles.sectionHint}>{t.breatheTip}</Text>
+
+          <View style={styles.circleWrap}>
+            <Animated.View
+              style={[
+                styles.circle,
+                {
+                  width: circleSize,
+                  height: circleSize,
+                  transform: [{ scale: scaleAnim }],
+                },
+              ]}
+            />
+            <Pressable style={styles.circleButton} onPress={toggleSession}>
+              <Text style={styles.circleButtonText}>
+                {sessionRunning ? t.stop : t.start}
+              </Text>
+            </Pressable>
+          </View>
+
           <View style={styles.presetGrid}>
             {presets.map((item) => (
               <Pressable
@@ -384,19 +398,6 @@ export default function App() {
               ))}
             </View>
           )}
-
-          <View style={styles.circleWrap}>
-            <Animated.View
-              style={[
-                styles.circle,
-                {
-                  width: circleSize,
-                  height: circleSize,
-                  transform: [{ scale: scaleAnim }],
-                },
-              ]}
-            />
-          </View>
         </View>
 
         <View style={styles.card}>
@@ -500,7 +501,6 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     alignItems: "flex-end",
-    gap: 8,
   },
   title: {
     fontSize: 26,
@@ -539,18 +539,6 @@ const styles = StyleSheet.create({
   langTextActive: {
     color: "#FFFFFF",
   },
-  primaryButton: {
-    backgroundColor: "#1E1B18",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 12,
-    letterSpacing: 0.2,
-  },
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 26,
@@ -569,6 +557,33 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 12,
     color: "#7C746D",
+  },
+  circleWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 18,
+    marginBottom: 8,
+  },
+  circle: {
+    borderRadius: 999,
+    backgroundColor: "#D9F0E7",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  circleButton: {
+    position: "absolute",
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: "#1E1B18",
+  },
+  circleButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 12,
+    letterSpacing: 0.2,
   },
   presetGrid: {
     marginTop: 12,
@@ -625,19 +640,6 @@ const styles = StyleSheet.create({
     color: "#5E5852",
     width: 50,
     textAlign: "right",
-  },
-  circleWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 22,
-  },
-  circle: {
-    borderRadius: 999,
-    backgroundColor: "#D9F0E7",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
   },
   timerGrid: {
     marginTop: 12,
