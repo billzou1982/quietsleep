@@ -176,13 +176,30 @@ export default function App() {
     scaleAnim.setValue(1);
   }, [scaleAnim]);
 
+  const unloadVoice = useCallback(async () => {
+    const current = voiceRef.current;
+    await Promise.all(
+      [current.inhale, current.hold, current.exhale].map(async (sound) => {
+        if (!sound) return;
+        try {
+          await sound.stopAsync();
+          await sound.unloadAsync();
+        } catch {
+          // ignore
+        }
+      })
+    );
+    voiceRef.current = { inhale: null, hold: null, exhale: null };
+  }, []);
+
   const ensureVoice = useCallback(async () => {
+    await unloadVoice();
     const pack = voiceAssets[lang];
     const inhale = await Audio.Sound.createAsync(pack.inhale, { volume: 0.9 });
     const hold = await Audio.Sound.createAsync(pack.hold, { volume: 0.9 });
     const exhale = await Audio.Sound.createAsync(pack.exhale, { volume: 0.9 });
     voiceRef.current = { inhale: inhale.sound, hold: hold.sound, exhale: exhale.sound };
-  }, [lang]);
+  }, [lang, unloadVoice]);
 
   const ensureNoise = useCallback(async () => {
     if (noiseType === "none") return;
@@ -249,6 +266,16 @@ export default function App() {
   }, [scheduleBreathCycle]);
 
   useEffect(() => {
+    if (sessionRunning) {
+      ensureVoice().catch(() => {});
+    }
+  }, [ensureVoice, sessionRunning]);
+
+  useEffect(() => {
+    voiceRef.current = { inhale: null, hold: null, exhale: null };
+  }, [lang]);
+
+  useEffect(() => {
     return () => {
       stopSession();
     };
@@ -273,7 +300,6 @@ export default function App() {
     setSessionRunning(true);
     sessionRunningRef.current = true;
     startBreathingAnim();
-    scheduleBreathCycle();
     if (timerMinutes) {
       setRemaining(timerMinutes * 60);
       setTimerRunning(true);
@@ -287,6 +313,8 @@ export default function App() {
       await ensureNoise();
     } catch {
       // allow UI to run even if audio fails
+    } finally {
+      scheduleBreathCycle();
     }
   }, [ensureNoise, ensureVoice, scheduleBreathCycle, sessionRunning, startBreathingAnim, timerMinutes]);
 
