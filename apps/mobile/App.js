@@ -193,24 +193,22 @@ export default function App() {
     voiceRef.current = { inhale: null, hold: null, exhale: null };
   }, []);
 
+  const loadSound = useCallback(async (moduleAsset, volumeLevel) => {
+    const asset = Asset.fromModule(moduleAsset);
+    await asset.downloadAsync();
+    const source = asset.localUri ? { uri: asset.localUri } : moduleAsset;
+    const { sound } = await Audio.Sound.createAsync(source, { volume: volumeLevel });
+    return sound;
+  }, []);
+
   const ensureVoice = useCallback(async () => {
     await unloadVoice();
-    try {
-      const pack = voiceAssets[lang];
-      await Asset.loadAsync([pack.inhale, pack.hold, pack.exhale]);
-      const inhale = await Audio.Sound.createAsync(pack.inhale, { volume: 0.9 });
-      const hold = await Audio.Sound.createAsync(pack.hold, { volume: 0.9 });
-      const exhale = await Audio.Sound.createAsync(pack.exhale, { volume: 0.9 });
-      voiceRef.current = { inhale: inhale.sound, hold: hold.sound, exhale: exhale.sound };
-    } catch {
-      const pack = voiceAssets.en;
-      await Asset.loadAsync([pack.inhale, pack.hold, pack.exhale]);
-      const inhale = await Audio.Sound.createAsync(pack.inhale, { volume: 0.9 });
-      const hold = await Audio.Sound.createAsync(pack.hold, { volume: 0.9 });
-      const exhale = await Audio.Sound.createAsync(pack.exhale, { volume: 0.9 });
-      voiceRef.current = { inhale: inhale.sound, hold: hold.sound, exhale: exhale.sound };
-    }
-  }, [lang, unloadVoice]);
+    const pack = voiceAssets[lang];
+    const inhale = await loadSound(pack.inhale, 0.9);
+    const hold = await loadSound(pack.hold, 0.9);
+    const exhale = await loadSound(pack.exhale, 0.9);
+    voiceRef.current = { inhale, hold, exhale };
+  }, [lang, loadSound, unloadVoice]);
 
   const ensureNoise = useCallback(async () => {
     if (noiseType === "none") return;
@@ -277,14 +275,18 @@ export default function App() {
   }, [scheduleBreathCycle]);
 
   useEffect(() => {
-    if (sessionRunning) {
-      ensureVoice().catch(() => {});
+    if (!sessionRunning) {
+      voiceRef.current = { inhale: null, hold: null, exhale: null };
+      return;
     }
-  }, [ensureVoice, sessionRunning]);
-
-  useEffect(() => {
-    voiceRef.current = { inhale: null, hold: null, exhale: null };
-  }, [lang]);
+    ensureVoice()
+      .then(() => {
+        scheduleBreathCycle();
+      })
+      .catch(() => {
+        // keep session running even if voice fails
+      });
+  }, [ensureVoice, scheduleBreathCycle, sessionRunning]);
 
   useEffect(() => {
     return () => {
@@ -315,26 +317,14 @@ export default function App() {
       setRemaining(timerMinutes * 60);
       setTimerRunning(true);
     }
-    try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-      });
-    } catch {
-      // ignore audio mode failure
-    }
 
-    try {
-      await ensureVoice();
-    } catch {
-      // allow UI to run even if voice fails
-    }
+    await Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+    });
 
-    try {
-      await ensureNoise();
-    } catch {
-      // allow UI to run even if noise fails
-    }
+    await ensureVoice();
+    await ensureNoise();
 
     scheduleBreathCycle();
   }, [ensureNoise, ensureVoice, scheduleBreathCycle, sessionRunning, startBreathingAnim, timerMinutes]);
