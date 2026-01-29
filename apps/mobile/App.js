@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  Platform,
+  SafeAreaView,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import Slider from "@react-native-community/slider";
 import { Audio } from "expo-av";
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
 import enInhale from "./assets/voice/en-inhale.mp3";
 import enHold from "./assets/voice/en-hold.mp3";
 import enExhale from "./assets/voice/en-exhale.mp3";
@@ -21,14 +20,6 @@ import zhHold from "./assets/voice/zh-hold.mp3";
 import zhExhale from "./assets/voice/zh-exhale.mp3";
 import whiteNoise from "./assets/audio/white.wav";
 import pinkNoise from "./assets/audio/pink.wav";
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
 
 const copy = {
   en: {
@@ -63,9 +54,6 @@ const copy = {
       "Avoid stimulating content 30 mins before bed",
       "Keep the room slightly cool and ventilated",
     ],
-    pushTitle: "Push notifications",
-    pushHint: "Enable notifications and copy the Expo token.",
-    pushButton: "Enable notifications",
   },
   zh: {
     title: "轻眠 · QuietSleep",
@@ -99,9 +87,6 @@ const copy = {
       "睡前 30 分钟避免高刺激内容",
       "保持房间略微偏凉、通风",
     ],
-    pushTitle: "推送通知",
-    pushHint: "启用通知并获取 Expo token。",
-    pushButton: "开启通知",
   },
 };
 
@@ -114,16 +99,8 @@ const presets = [
 const minuteOptions = [10, 15, 20, 30, 45, 60, 90];
 
 const voiceAssets = {
-  en: {
-    inhale: enInhale,
-    hold: enHold,
-    exhale: enExhale,
-  },
-  zh: {
-    inhale: zhInhale,
-    hold: zhHold,
-    exhale: zhExhale,
-  },
+  en: { inhale: enInhale, hold: enHold, exhale: enExhale },
+  zh: { inhale: zhInhale, hold: zhHold, exhale: zhExhale },
 };
 
 const noiseAssets = {
@@ -141,7 +118,6 @@ export default function App() {
   const [remaining, setRemaining] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [sessionRunning, setSessionRunning] = useState(false);
-  const [pushToken, setPushToken] = useState("");
   const [scaleAnim] = useState(() => new Animated.Value(1));
 
   const noiseRef = useRef(null);
@@ -170,8 +146,6 @@ export default function App() {
       noiseRef.current.setVolumeAsync(volume);
     }
   }, [volume]);
-
-  // cleanup handled below
 
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -320,41 +294,12 @@ export default function App() {
     }
   };
 
-  const registerForPushNotificationsAsync = useCallback(async () => {
-    if (!Device.isDevice) {
-      alert("Push notifications require a physical device.");
-      return;
-    }
-
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== "granted") {
-      alert("Notification permission not granted.");
-      return;
-    }
-
-    const token = await Notifications.getExpoPushTokenAsync();
-    setPushToken(token.data);
-
-    if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("default", {
-        name: "default",
-        importance: Notifications.AndroidImportance.DEFAULT,
-      });
-    }
-  }, []);
-
   return (
-    <View style={styles.page}>
+    <SafeAreaView style={styles.page}>
       <StatusBar style="dark" />
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <View>
+          <View style={styles.headerText}>
             <Text style={styles.title}>{t.title}</Text>
             <Text style={styles.subtitle}>{t.subtitle}</Text>
           </View>
@@ -367,7 +312,9 @@ export default function App() {
                 style={[styles.langButton, lang === "zh" && styles.langButtonActive]}
                 onPress={() => setLang("zh")}
               >
-                <Text style={[styles.langText, lang === "zh" && styles.langTextActive]}>中文</Text>
+                <Text style={[styles.langText, lang === "zh" && styles.langTextActive]}>
+                  中文
+                </Text>
               </Pressable>
               <Pressable
                 style={[styles.langButton, lang === "en" && styles.langButtonActive]}
@@ -423,9 +370,9 @@ export default function App() {
                       minimumValue={2}
                       maximumValue={10}
                       step={1}
-                      minimumTrackTintColor="#84C9B2"
-                      maximumTrackTintColor="#E5E1DD"
-                      thumbTintColor="#1C5B4A"
+                      minimumTrackTintColor="#82C9B2"
+                      maximumTrackTintColor="#E6E1DC"
+                      thumbTintColor="#1F5C4C"
                       value={customRhythm[key]}
                       onValueChange={(value) =>
                         setCustomRhythm((prev) => ({ ...prev, [key]: value }))
@@ -494,9 +441,9 @@ export default function App() {
               minimumValue={0}
               maximumValue={1}
               step={0.01}
-              minimumTrackTintColor="#84C9B2"
-              maximumTrackTintColor="#E5E1DD"
-              thumbTintColor="#1C5B4A"
+              minimumTrackTintColor="#82C9B2"
+              maximumTrackTintColor="#E6E1DC"
+              thumbTintColor="#1F5C4C"
               value={volume}
               onValueChange={(value) => setVolume(value)}
             />
@@ -525,121 +472,119 @@ export default function App() {
             </View>
           ))}
         </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{t.pushTitle}</Text>
-          <Text style={styles.sectionHint}>{t.pushHint}</Text>
-          <Pressable style={styles.primaryButton} onPress={registerForPushNotificationsAsync}>
-            <Text style={styles.primaryButtonText}>{t.pushButton}</Text>
-          </Pressable>
-          {pushToken ? (
-            <Text style={styles.tokenText} selectable>
-              {pushToken}
-            </Text>
-          ) : null}
-        </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: "#F9F7F4",
+    backgroundColor: "#F7F5F1",
   },
   container: {
-    padding: 24,
-    paddingBottom: 48,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    paddingTop: Platform.OS === "android" ? 18 : 6,
+    gap: 16,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
-    flexWrap: "wrap",
     gap: 12,
   },
+  headerText: {
+    flex: 1,
+    paddingRight: 8,
+  },
   headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    flexWrap: "wrap",
+    alignItems: "flex-end",
+    gap: 8,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "600",
-    color: "#201D1A",
+    color: "#1F1C19",
   },
   subtitle: {
-    fontSize: 13,
-    color: "#6B655F",
-    marginTop: 6,
-    maxWidth: 240,
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#6F6862",
   },
   langSwitcher: {
     flexDirection: "row",
     backgroundColor: "#FFFFFF",
-    borderRadius: 24,
+    borderRadius: 999,
     padding: 4,
     shadowColor: "#000",
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
   },
   langButton: {
     paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 18,
+    paddingHorizontal: 14,
+    borderRadius: 999,
   },
   langButtonActive: {
     backgroundColor: "#1E1B18",
   },
   langText: {
     fontSize: 12,
-    color: "#6B655F",
-    fontWeight: "500",
+    color: "#6F6862",
+    fontWeight: "600",
   },
   langTextActive: {
     color: "#FFFFFF",
   },
+  primaryButton: {
+    backgroundColor: "#1E1B18",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+  },
+  primaryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 12,
+    letterSpacing: 0.2,
+  },
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 16,
+    borderRadius: 26,
+    padding: 18,
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "600",
-    color: "#2C2722",
+    color: "#2B2622",
   },
   sectionHint: {
     marginTop: 6,
     fontSize: 12,
-    color: "#7A736C",
+    color: "#7C746D",
   },
   presetGrid: {
     marginTop: 12,
-    flexDirection: "row",
-    flexWrap: "wrap",
     gap: 10,
   },
   presetButton: {
     borderWidth: 1,
-    borderColor: "#E5E1DD",
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    minWidth: 120,
+    borderColor: "#E6E1DC",
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: "#FFFFFF",
   },
   presetButtonActive: {
-    borderColor: "#84C9B2",
-    backgroundColor: "#E7F6EF",
+    borderColor: "#8CCBB6",
+    backgroundColor: "#EAF6F1",
   },
   presetTitle: {
     fontSize: 13,
@@ -647,20 +592,20 @@ const styles = StyleSheet.create({
     color: "#4E4741",
   },
   presetTitleActive: {
-    color: "#1C5B4A",
+    color: "#1F5C4C",
   },
   presetMeta: {
     marginTop: 4,
     fontSize: 11,
-    color: "#8C857D",
+    color: "#8A837C",
   },
   customBox: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 16,
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#D9EEE6",
-    backgroundColor: "#F3FBF7",
+    borderColor: "#DDEDE7",
+    backgroundColor: "#F4FBF7",
     gap: 12,
   },
   customRow: {
@@ -668,7 +613,7 @@ const styles = StyleSheet.create({
   },
   customLabel: {
     fontSize: 12,
-    color: "#5C564F",
+    color: "#5E5852",
   },
   sliderRow: {
     flexDirection: "row",
@@ -677,20 +622,20 @@ const styles = StyleSheet.create({
   },
   customValue: {
     fontSize: 12,
-    color: "#5C564F",
+    color: "#5E5852",
     width: 50,
     textAlign: "right",
   },
   circleWrap: {
     alignItems: "center",
     justifyContent: "center",
-    marginVertical: 20,
+    marginTop: 22,
   },
   circle: {
-    borderRadius: 200,
+    borderRadius: 999,
     backgroundColor: "#D9F0E7",
     shadowColor: "#000",
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
@@ -702,49 +647,49 @@ const styles = StyleSheet.create({
   },
   timerButton: {
     borderWidth: 1,
-    borderColor: "#E5E1DD",
+    borderColor: "#E6E1DC",
     borderRadius: 18,
     paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
   },
   timerButtonActive: {
-    borderColor: "#84C9B2",
-    backgroundColor: "#E7F6EF",
+    borderColor: "#8CCBB6",
+    backgroundColor: "#EAF6F1",
   },
   timerText: {
     fontSize: 12,
-    color: "#5C564F",
+    color: "#5E5852",
   },
   timerTextActive: {
-    color: "#1C5B4A",
+    color: "#1F5C4C",
     fontWeight: "600",
   },
   timerPanel: {
     marginTop: 12,
-    padding: 14,
+    paddingVertical: 12,
     borderRadius: 18,
-    backgroundColor: "#E7F6EF",
+    backgroundColor: "#EAF6F1",
     alignItems: "center",
   },
   timerTime: {
     fontSize: 22,
     fontWeight: "600",
-    color: "#2C2722",
+    color: "#2B2622",
   },
   timerStatus: {
     marginTop: 4,
     fontSize: 11,
-    color: "#1C5B4A",
+    color: "#1F5C4C",
   },
   sliderHeader: {
     marginTop: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
   },
   sliderLabel: {
     fontSize: 12,
-    color: "#5C564F",
+    color: "#5E5852",
     width: 52,
   },
   noiseRow: {
@@ -755,18 +700,19 @@ const styles = StyleSheet.create({
   },
   noiseButton: {
     borderWidth: 1,
-    borderColor: "#E5E1DD",
+    borderColor: "#E6E1DC",
     borderRadius: 999,
     paddingVertical: 8,
     paddingHorizontal: 14,
+    backgroundColor: "#FFFFFF",
   },
   noiseButtonActive: {
-    borderColor: "#84C9B2",
-    backgroundColor: "#84C9B2",
+    borderColor: "#8CCBB6",
+    backgroundColor: "#8CCBB6",
   },
   noiseText: {
     fontSize: 12,
-    color: "#5C564F",
+    color: "#5E5852",
   },
   noiseTextActive: {
     color: "#FFFFFF",
@@ -776,35 +722,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
-    marginTop: 8,
+    marginTop: 10,
   },
   tipDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     marginTop: 6,
-    backgroundColor: "#84C9B2",
+    backgroundColor: "#8CCBB6",
   },
   tipText: {
     fontSize: 12,
-    color: "#6B655F",
+    color: "#6F6862",
     flex: 1,
-  },
-  primaryButton: {
-    backgroundColor: "#1E1B18",
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 24,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 12,
-  },
-  tokenText: {
-    marginTop: 12,
-    fontSize: 11,
-    color: "#5C564F",
   },
 });
