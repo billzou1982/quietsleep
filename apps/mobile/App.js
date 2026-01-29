@@ -12,6 +12,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import Slider from "@react-native-community/slider";
 import { Audio } from "expo-av";
+import { Asset } from "expo-asset";
 import enInhale from "./assets/voice/en-inhale.mp3";
 import enHold from "./assets/voice/en-hold.mp3";
 import enExhale from "./assets/voice/en-exhale.mp3";
@@ -195,6 +196,7 @@ export default function App() {
   const ensureVoice = useCallback(async () => {
     await unloadVoice();
     const pack = voiceAssets[lang];
+    await Asset.loadAsync([pack.inhale, pack.hold, pack.exhale]);
     const inhale = await Audio.Sound.createAsync(pack.inhale, { volume: 0.9 });
     const hold = await Audio.Sound.createAsync(pack.hold, { volume: 0.9 });
     const exhale = await Audio.Sound.createAsync(pack.exhale, { volume: 0.9 });
