@@ -54,12 +54,6 @@ const copy = {
     statusIdle: "Idle",
     statusNotSet: "Not set",
     noTimer: "No timer",
-    guide: "Wind-down tips",
-    guideItems: [
-      "Dim screens and ambient light",
-      "Avoid stimulating content 30 mins before bed",
-      "Keep the room slightly cool and ventilated",
-    ],
   },
   zh: {
     title: "轻眠 · QuietSleep",
@@ -91,12 +85,6 @@ const copy = {
     statusIdle: "未启动",
     statusNotSet: "未设置",
     noTimer: "不启用",
-    guide: "放松建议",
-    guideItems: [
-      "调暗屏幕与环境灯光",
-      "睡前 30 分钟避免高刺激内容",
-      "保持房间略微偏凉、通风",
-    ],
   },
 };
 
@@ -470,6 +458,33 @@ export default function App() {
       noiseRef.current.setVolumeAsync(volume);
     }
   }, [volume]);
+
+  useEffect(() => {
+    if (!sessionRunningRef.current) return;
+    if (noiseType === "none") {
+      stopNoise();
+      return;
+    }
+    ensureNoise();
+    return () => stopNoise();
+  }, [ensureNoise, noiseType, stopNoise]);
+
+  useEffect(() => {
+    if (!sessionRunningRef.current) return;
+    startBreathingAnim();
+    scheduleBreathCycle();
+  }, [rhythm, scheduleBreathCycle, startBreathingAnim]);
+
+  useEffect(() => {
+    if (!sessionRunningRef.current) return;
+    if (!timerMinutes) {
+      setTimerRunning(false);
+      setRemaining(0);
+      return;
+    }
+    setRemaining(timerMinutes * 60);
+    setTimerRunning(true);
+  }, [timerMinutes]);
 
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -850,15 +865,6 @@ export default function App() {
           </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{t.guide}</Text>
-          {t.guideItems.map((item) => (
-            <View key={item} style={styles.tipRow}>
-              <View style={styles.tipDot} />
-              <Text style={styles.tipText}>{item}</Text>
-            </View>
-          ))}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );

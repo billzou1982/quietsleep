@@ -55,8 +55,6 @@ type Copy = {
   statusIdle: string;
   statusNotSet: string;
   noTimer: string;
-  guide: string;
-  guideItems: string[];
   footer: string;
 };
 
@@ -94,12 +92,6 @@ const copy: Record<Lang, Copy> = {
     statusIdle: "未启动",
     statusNotSet: "未设置",
     noTimer: "不启用",
-    guide: "放松建议",
-    guideItems: [
-      "调暗屏幕与环境灯光",
-      "睡前 30 分钟避免高刺激内容",
-      "保持房间略微偏凉、通风",
-    ],
     footer: "无账户，本地存储偏好设置。",
   },
   en: {
@@ -135,12 +127,6 @@ const copy: Record<Lang, Copy> = {
     statusIdle: "Idle",
     statusNotSet: "Not set",
     noTimer: "No timer",
-    guide: "Wind-down tips",
-    guideItems: [
-      "Dim screens and ambient light",
-      "Avoid stimulating content 30 mins before bed",
-      "Keep the room slightly cool and ventilated",
-    ],
     footer: "No account. Preferences stored locally.",
   },
 };
@@ -344,7 +330,7 @@ export default function Home() {
     return buffer;
   };
 
-  const startNoise = () => {
+  const startNoise = useCallback(() => {
     if (!audioCtxRef.current || noiseType === "none") return;
     const ctx = audioCtxRef.current;
     const gain = ctx.createGain();
@@ -357,7 +343,7 @@ export default function Home() {
     source.start();
     noiseSourceRef.current = source;
     noiseGainRef.current = gain;
-  };
+  }, [noiseType, volume]);
 
   const stopNoise = useCallback(() => {
     if (noiseSourceRef.current) {
@@ -374,6 +360,16 @@ export default function Home() {
       noiseGainRef.current = null;
     }
   }, []);
+
+  useEffect(() => {
+    if (!sessionRunningRef.current) return;
+    if (noiseType === "none") {
+      stopNoise();
+      return;
+    }
+    startNoise();
+    return () => stopNoise();
+  }, [noiseType, startNoise, stopNoise]);
 
   const playVoice = (type: "inhale" | "hold" | "exhale") => {
     if (!voiceRef.current) return;
@@ -392,7 +388,7 @@ export default function Home() {
     }
   }, []);
 
-  const scheduleBreathCycle = () => {
+  const scheduleBreathCycle = useCallback(() => {
     clearCues();
     const inhaleMs = rhythm.inhale * 1000;
     const holdMs = rhythm.hold * 1000;
@@ -409,7 +405,23 @@ export default function Home() {
     cycleTimeoutRef.current = window.setTimeout(() => {
       if (sessionRunningRef.current) scheduleBreathCycle();
     }, inhaleMs + holdMs + exhaleMs);
-  };
+  }, [clearCues, rhythm]);
+
+  useEffect(() => {
+    if (!sessionRunningRef.current) return;
+    scheduleBreathCycle();
+  }, [rhythm, scheduleBreathCycle]);
+
+  useEffect(() => {
+    if (!sessionRunningRef.current) return;
+    if (!timerMinutes) {
+      setTimerRunning(false);
+      setRemaining(0);
+      return;
+    }
+    setRemaining(timerMinutes * 60);
+    setTimerRunning(true);
+  }, [timerMinutes]);
 
   const stopSession = useCallback(() => {
     setSessionRunning(false);
@@ -704,17 +716,6 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="rounded-3xl bg-[color:var(--qs-card)] p-6 shadow-sm md:col-span-3">
-            <h2 className="text-xl font-semibold">{t.guide}</h2>
-            <ul className="mt-3 space-y-2 text-sm text-[color:var(--qs-text-muted)]">
-              {t.guideItems.map((item) => (
-                <li key={item} className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-[color:var(--qs-dot)]" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </section>
         </main>
 
         <footer className="mt-10 text-center text-xs text-[color:var(--qs-text-soft)]">
