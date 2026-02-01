@@ -28,7 +28,7 @@ const copy = {
     title: "QuietSleep",
     subtitle: "A minimal, gentle sleep aid: breathing, noise, and timer.",
     start: "Start",
-    stop: "Stop",
+    stop: "End",
     theme: "Theme",
     themeSystem: "System",
     themeDay: "Day",
@@ -65,7 +65,7 @@ const copy = {
     title: "轻眠 · QuietSleep",
     subtitle: "极简、柔和的助眠工具。呼吸引导 + 白/粉红噪音 + 定时关闭。",
     start: "开始",
-    stop: "停止",
+    stop: "结束",
     theme: "外观",
     themeSystem: "跟随系统",
     themeDay: "白天",
@@ -194,62 +194,34 @@ const createStyles = (theme) =>
       lineHeight: 18,
       color: theme.textMuted,
     },
-    langSwitcher: {
+    controlRow: {
       flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    controlPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
       backgroundColor: theme.pillBg,
       borderRadius: 999,
-      padding: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderWidth: 1,
+      borderColor: theme.border,
       shadowColor: "#000",
       shadowOpacity: 0.06,
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 6 },
     },
-    langButton: {
-      paddingVertical: 6,
-      paddingHorizontal: 14,
-      borderRadius: 999,
+    controlIcon: {
+      fontSize: 16,
+      color: theme.text,
     },
-    langButtonActive: {
-      backgroundColor: theme.pillActiveBg,
-    },
-    langText: {
-      fontSize: 12,
-      color: theme.textMuted,
-      fontWeight: "600",
-    },
-    langTextActive: {
-      color: theme.pillActiveText,
-    },
-    themeRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-    },
-    themeLabel: {
+    controlText: {
       fontSize: 11,
-      color: theme.textMuted,
-    },
-    themeSwitcher: {
-      flexDirection: "row",
-      backgroundColor: theme.pillBg,
-      borderRadius: 999,
-      padding: 4,
-    },
-    themeButton: {
-      paddingVertical: 4,
-      paddingHorizontal: 10,
-      borderRadius: 999,
-    },
-    themeButtonActive: {
-      backgroundColor: theme.pillActiveBg,
-    },
-    themeText: {
-      fontSize: 11,
-      color: theme.textMuted,
       fontWeight: "600",
-    },
-    themeTextActive: {
-      color: theme.pillActiveText,
+      color: theme.text,
     },
     card: {
       backgroundColor: theme.card,
@@ -478,6 +450,8 @@ export default function App() {
     themeMode === "system" ? (systemScheme === "dark" ? "night" : "day") : themeMode;
   const palette = themes[resolvedTheme];
   const styles = useMemo(() => createStyles(palette), [palette]);
+  const themeIcon =
+    themeMode === "system" ? "💻" : themeMode === "day" ? "☀️" : "🌙";
 
   const rhythm = useMemo(() => {
     if (rhythmId === "custom") return customRhythm;
@@ -686,6 +660,18 @@ export default function App() {
     }
   };
 
+  const cycleTheme = () => {
+    setThemeMode((prev) => {
+      if (prev === "system") return "day";
+      if (prev === "day") return "night";
+      return "system";
+    });
+  };
+
+  const toggleLang = () => {
+    setLang((prev) => (prev === "zh" ? "en" : "zh"));
+  };
+
   return (
     <SafeAreaView style={styles.page}>
       <StatusBar style={resolvedTheme === "night" ? "light" : "dark"} />
@@ -696,47 +682,27 @@ export default function App() {
             <Text style={styles.subtitle}>{t.subtitle}</Text>
           </View>
           <View style={styles.headerRight}>
-            <View style={styles.langSwitcher}>
+            <View style={styles.controlRow}>
               <Pressable
-                style={[styles.langButton, lang === "en" && styles.langButtonActive]}
-                onPress={() => setLang("en")}
+                style={styles.controlPill}
+                onPress={cycleTheme}
+                accessibilityLabel={`${t.theme}: ${
+                  themeMode === "system"
+                    ? t.themeSystem
+                    : themeMode === "day"
+                      ? t.themeDay
+                      : t.themeNight
+                }`}
               >
-                <Text style={[styles.langText, lang === "en" && styles.langTextActive]}>EN</Text>
+                <Text style={styles.controlIcon}>{themeIcon}</Text>
               </Pressable>
               <Pressable
-                style={[styles.langButton, lang === "zh" && styles.langButtonActive]}
-                onPress={() => setLang("zh")}
+                style={styles.controlPill}
+                onPress={toggleLang}
+                accessibilityLabel={lang === "zh" ? "中文" : "English"}
               >
-                <Text style={[styles.langText, lang === "zh" && styles.langTextActive]}>CN</Text>
+                <Text style={styles.controlText}>{lang === "zh" ? "中文" : "EN"}</Text>
               </Pressable>
-            </View>
-            <View style={styles.themeRow}>
-              <Text style={styles.themeLabel}>{t.theme}</Text>
-              <View style={styles.themeSwitcher}>
-                {[
-                  { id: "system", label: t.themeSystem },
-                  { id: "day", label: t.themeDay },
-                  { id: "night", label: t.themeNight },
-                ].map((item) => (
-                  <Pressable
-                    key={item.id}
-                    style={[
-                      styles.themeButton,
-                      themeMode === item.id && styles.themeButtonActive,
-                    ]}
-                    onPress={() => setThemeMode(item.id)}
-                  >
-                    <Text
-                      style={[
-                        styles.themeText,
-                        themeMode === item.id && styles.themeTextActive,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
             </View>
           </View>
         </View>

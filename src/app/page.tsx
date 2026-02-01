@@ -8,6 +8,11 @@ type NoiseType = "none" | "white" | "pink";
 
 type ThemeMode = "system" | "day" | "night";
 
+type ThemeIcon = {
+  label: string;
+  icon: string;
+};
+
 type RhythmPreset = {
   id: string;
   zh: string;
@@ -59,8 +64,8 @@ const copy: Record<Lang, Copy> = {
   zh: {
     title: "轻眠 · QuietSleep",
     subtitle: "极简、柔和的助眠工具。呼吸引导 + 白/粉红噪音 + 定时关闭。",
-    start: "一键开始",
-    stop: "一键停止",
+    start: "开始",
+    stop: "结束",
     theme: "外观",
     themeSystem: "跟随系统",
     themeDay: "白天",
@@ -147,6 +152,12 @@ const presets: RhythmPreset[] = [
 ];
 
 const minuteOptions = [10, 15, 20, 30, 45, 60, 90];
+
+const themeIcons: Record<ThemeMode, ThemeIcon> = {
+  system: { label: "System", icon: "💻" },
+  day: { label: "Day", icon: "☀️" },
+  night: { label: "Night", icon: "🌙" },
+};
 
 export default function Home() {
   const [lang, setLang] = useState<Lang>("en");
@@ -423,6 +434,18 @@ export default function Home() {
     }
   };
 
+  const cycleTheme = () => {
+    setThemeMode((prev) => {
+      if (prev === "system") return "day";
+      if (prev === "day") return "night";
+      return "system";
+    });
+  };
+
+  const toggleLang = () => {
+    setLang((prev) => (prev === "zh" ? "en" : "zh"));
+  };
+
   return (
     <div
       className="min-h-screen text-[color:var(--qs-text)]"
@@ -457,54 +480,29 @@ export default function Home() {
             >
               {sessionRunning ? t.stop : t.start}
             </button>
-            <div className="flex flex-col items-end gap-2">
-              <div className="flex items-center gap-2 rounded-full bg-[color:var(--qs-pill-bg)] p-1 shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setLang("zh")}
-                  className={`rounded-full px-4 py-1.5 text-sm transition ${
-                    lang === "zh"
-                      ? "bg-[color:var(--qs-pill-active-bg)] text-[color:var(--qs-pill-active-text)]"
-                      : "text-[color:var(--qs-text-muted)] hover:text-[color:var(--qs-text)]"
-                  }`}
-                >
-                  中文
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLang("en")}
-                  className={`rounded-full px-4 py-1.5 text-sm transition ${
-                    lang === "en"
-                      ? "bg-[color:var(--qs-pill-active-bg)] text-[color:var(--qs-pill-active-text)]"
-                      : "text-[color:var(--qs-text-muted)] hover:text-[color:var(--qs-text)]"
-                  }`}
-                >
-                  EN
-                </button>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-[color:var(--qs-text-muted)]">
-                <span>{t.theme}</span>
-                <div className="flex items-center gap-1 rounded-full bg-[color:var(--qs-pill-bg)] p-1 shadow-sm">
-                  {([
-                    { id: "system", label: t.themeSystem },
-                    { id: "day", label: t.themeDay },
-                    { id: "night", label: t.themeNight },
-                  ] as const).map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setThemeMode(item.id)}
-                      className={`rounded-full px-3 py-1 text-xs transition ${
-                        themeMode === item.id
-                          ? "bg-[color:var(--qs-pill-active-bg)] text-[color:var(--qs-pill-active-text)]"
-                          : "text-[color:var(--qs-text-muted)] hover:text-[color:var(--qs-text)]"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={cycleTheme}
+                title={`${t.theme}: ${
+                  themeMode === "system"
+                    ? t.themeSystem
+                    : themeMode === "day"
+                      ? t.themeDay
+                      : t.themeNight
+                }`}
+                className="flex h-9 w-12 items-center justify-center rounded-full border border-[color:var(--qs-border)] bg-[color:var(--qs-pill-bg)] text-base shadow-sm transition hover:text-[color:var(--qs-text)]"
+              >
+                <span aria-hidden="true">{themeIcons[themeMode].icon}</span>
+              </button>
+              <button
+                type="button"
+                onClick={toggleLang}
+                title={lang === "zh" ? "中文" : "English"}
+                className="flex h-9 items-center justify-center rounded-full border border-[color:var(--qs-border)] bg-[color:var(--qs-pill-bg)] px-4 text-xs font-semibold text-[color:var(--qs-text)] shadow-sm transition hover:text-[color:var(--qs-text)]"
+              >
+                {lang === "zh" ? "中文" : "EN"}
+              </button>
             </div>
           </div>
         </header>
