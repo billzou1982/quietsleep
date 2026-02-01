@@ -234,7 +234,32 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    document.documentElement.dataset.theme = themeMode;
+    const root = document.documentElement;
+    root.dataset.theme = themeMode;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const setThemeColor = (isDark: boolean) => {
+      const color = isDark ? "#0b1120" : "#fafaf9";
+      meta?.setAttribute("content", color);
+      root.style.backgroundColor = color;
+      document.body.style.backgroundColor = color;
+    };
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const applyColor = () => {
+      if (themeMode === "night") {
+        setThemeColor(true);
+        return;
+      }
+      if (themeMode === "day") {
+        setThemeColor(false);
+        return;
+      }
+      setThemeColor(media.matches);
+    };
+    applyColor();
+    if (themeMode !== "system") return;
+    const handler = () => applyColor();
+    media.addEventListener?.("change", handler);
+    return () => media.removeEventListener?.("change", handler);
   }, [themeMode]);
 
   useEffect(() => {

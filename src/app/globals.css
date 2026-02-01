@@ -34,8 +34,8 @@
 :root[data-theme="night"] {
   color-scheme: dark;
   --qs-page-start: #0b1120;
-  --qs-page-mid: #111827;
-  --qs-page-end: #0f172a;
+  --qs-page-mid: #0f172a;
+  --qs-page-end: #0b1120;
   --qs-text: #e5e7eb;
   --qs-text-secondary: #cbd5f5;
   --qs-text-muted: #94a3b8;
@@ -62,8 +62,8 @@
   :root[data-theme="system"] {
     color-scheme: dark;
     --qs-page-start: #0b1120;
-    --qs-page-mid: #111827;
-    --qs-page-end: #0f172a;
+    --qs-page-mid: #0f172a;
+    --qs-page-end: #0b1120;
     --qs-text: #e5e7eb;
     --qs-text-secondary: #cbd5f5;
     --qs-text-muted: #94a3b8;
@@ -94,6 +94,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html,
 body {
   background: var(--qs-page-start);
   color: var(--qs-text);
