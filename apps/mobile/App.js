@@ -8,6 +8,7 @@ import {
   View,
   Platform,
   SafeAreaView,
+  useColorScheme,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import Slider from "@react-native-community/slider";
@@ -28,6 +29,10 @@ const copy = {
     subtitle: "A minimal, gentle sleep aid: breathing, noise, and timer.",
     start: "Start",
     stop: "Stop",
+    theme: "Theme",
+    themeSystem: "System",
+    themeDay: "Day",
+    themeNight: "Night",
     breathe: "Sleep Guide",
     breatheTip: "Pick a rhythm and duration. Circle size reflects your breath time.",
     rhythm: "Breathing rhythm",
@@ -61,6 +66,10 @@ const copy = {
     subtitle: "极简、柔和的助眠工具。呼吸引导 + 白/粉红噪音 + 定时关闭。",
     start: "开始",
     stop: "停止",
+    theme: "外观",
+    themeSystem: "跟随系统",
+    themeDay: "白天",
+    themeNight: "夜间",
     breathe: "睡眠引导",
     breatheTip: "选择节奏与时长，圆圈大小随呼吸时间变化。",
     rhythm: "呼吸节奏",
@@ -109,8 +118,343 @@ const noiseAssets = {
   pink: pinkNoise,
 };
 
+const themes = {
+  day: {
+    page: "#F7F5F1",
+    card: "#FFFFFF",
+    text: "#1F1C19",
+    textMuted: "#6F6862",
+    textSoft: "#8A837C",
+    border: "#E6E1DC",
+    accent: "#8CCBB6",
+    accentStrong: "#1F5C4C",
+    accentSoft: "#EAF6F1",
+    circle: "#D9F0E7",
+    buttonBg: "#1E1B18",
+    buttonText: "#FFFFFF",
+    pillBg: "#FFFFFF",
+    pillActiveBg: "#1E1B18",
+    pillActiveText: "#FFFFFF",
+    dot: "#8CCBB6",
+  },
+  night: {
+    page: "#0F172A",
+    card: "#111827",
+    text: "#E5E7EB",
+    textMuted: "#94A3B8",
+    textSoft: "#64748B",
+    border: "#334155",
+    accent: "#34D399",
+    accentStrong: "#A7F3D0",
+    accentSoft: "rgba(16, 185, 129, 0.18)",
+    circle: "rgba(16, 185, 129, 0.28)",
+    buttonBg: "#E2E8F0",
+    buttonText: "#0F172A",
+    pillBg: "#1F2937",
+    pillActiveBg: "#E2E8F0",
+    pillActiveText: "#0F172A",
+    dot: "#34D399",
+  },
+};
+
+const createStyles = (theme) =>
+  StyleSheet.create({
+    page: {
+      flex: 1,
+      backgroundColor: theme.page,
+    },
+    container: {
+      paddingHorizontal: 20,
+      paddingBottom: 40,
+      paddingTop: Platform.OS === "android" ? 18 : 6,
+      gap: 16,
+    },
+    header: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 12,
+    },
+    headerText: {
+      flex: 1,
+      paddingRight: 8,
+    },
+    headerRight: {
+      alignItems: "flex-end",
+      gap: 8,
+    },
+    title: {
+      fontSize: 26,
+      fontWeight: "600",
+      color: theme.text,
+    },
+    subtitle: {
+      marginTop: 4,
+      fontSize: 12,
+      lineHeight: 18,
+      color: theme.textMuted,
+    },
+    langSwitcher: {
+      flexDirection: "row",
+      backgroundColor: theme.pillBg,
+      borderRadius: 999,
+      padding: 4,
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 6 },
+    },
+    langButton: {
+      paddingVertical: 6,
+      paddingHorizontal: 14,
+      borderRadius: 999,
+    },
+    langButtonActive: {
+      backgroundColor: theme.pillActiveBg,
+    },
+    langText: {
+      fontSize: 12,
+      color: theme.textMuted,
+      fontWeight: "600",
+    },
+    langTextActive: {
+      color: theme.pillActiveText,
+    },
+    themeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    themeLabel: {
+      fontSize: 11,
+      color: theme.textMuted,
+    },
+    themeSwitcher: {
+      flexDirection: "row",
+      backgroundColor: theme.pillBg,
+      borderRadius: 999,
+      padding: 4,
+    },
+    themeButton: {
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+    },
+    themeButtonActive: {
+      backgroundColor: theme.pillActiveBg,
+    },
+    themeText: {
+      fontSize: 11,
+      color: theme.textMuted,
+      fontWeight: "600",
+    },
+    themeTextActive: {
+      color: theme.pillActiveText,
+    },
+    card: {
+      backgroundColor: theme.card,
+      borderRadius: 26,
+      padding: 18,
+      shadowColor: "#000",
+      shadowOpacity: 0.05,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 6 },
+    },
+    sectionTitle: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: theme.text,
+    },
+    sectionHint: {
+      marginTop: 6,
+      fontSize: 12,
+      color: theme.textMuted,
+    },
+    circleWrap: {
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 18,
+      marginBottom: 8,
+    },
+    circle: {
+      borderRadius: 999,
+      backgroundColor: theme.circle,
+      shadowColor: "#000",
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+    },
+    circleButton: {
+      position: "absolute",
+      paddingVertical: 8,
+      paddingHorizontal: 18,
+      borderRadius: 999,
+      backgroundColor: theme.buttonBg,
+    },
+    circleButtonText: {
+      color: theme.buttonText,
+      fontWeight: "600",
+      fontSize: 12,
+      letterSpacing: 0.2,
+    },
+    presetGrid: {
+      marginTop: 12,
+      gap: 10,
+    },
+    presetButton: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 18,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      backgroundColor: theme.card,
+    },
+    presetButtonActive: {
+      borderColor: theme.accent,
+      backgroundColor: theme.accentSoft,
+    },
+    presetTitle: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: theme.textMuted,
+    },
+    presetTitleActive: {
+      color: theme.accentStrong,
+    },
+    presetMeta: {
+      marginTop: 4,
+      fontSize: 11,
+      color: theme.textSoft,
+    },
+    customBox: {
+      marginTop: 14,
+      padding: 14,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.accent,
+      backgroundColor: theme.accentSoft,
+      gap: 12,
+    },
+    customRow: {
+      gap: 6,
+    },
+    customLabel: {
+      fontSize: 12,
+      color: theme.textMuted,
+    },
+    sliderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    customValue: {
+      fontSize: 12,
+      color: theme.textMuted,
+      width: 50,
+      textAlign: "right",
+    },
+    timerGrid: {
+      marginTop: 12,
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    timerButton: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 18,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+    },
+    timerButtonActive: {
+      borderColor: theme.accent,
+      backgroundColor: theme.accentSoft,
+    },
+    timerText: {
+      fontSize: 12,
+      color: theme.textMuted,
+    },
+    timerTextActive: {
+      color: theme.accentStrong,
+      fontWeight: "600",
+    },
+    timerPanel: {
+      marginTop: 12,
+      paddingVertical: 12,
+      borderRadius: 18,
+      backgroundColor: theme.accentSoft,
+      alignItems: "center",
+    },
+    timerTime: {
+      fontSize: 22,
+      fontWeight: "600",
+      color: theme.text,
+    },
+    timerStatus: {
+      marginTop: 4,
+      fontSize: 11,
+      color: theme.accentStrong,
+    },
+    sliderHeader: {
+      marginTop: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    sliderLabel: {
+      fontSize: 12,
+      color: theme.textMuted,
+      width: 52,
+    },
+    noiseRow: {
+      marginTop: 12,
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    noiseButton: {
+      borderWidth: 1,
+      borderColor: theme.border,
+      borderRadius: 999,
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      backgroundColor: theme.card,
+    },
+    noiseButtonActive: {
+      borderColor: theme.accent,
+      backgroundColor: theme.accent,
+    },
+    noiseText: {
+      fontSize: 12,
+      color: theme.textMuted,
+    },
+    noiseTextActive: {
+      color: theme.buttonText,
+      fontWeight: "600",
+    },
+    tipRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+      marginTop: 10,
+    },
+    tipDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      marginTop: 6,
+      backgroundColor: theme.dot,
+    },
+    tipText: {
+      fontSize: 12,
+      color: theme.textMuted,
+      flex: 1,
+    },
+  });
+
 export default function App() {
   const [lang, setLang] = useState("en");
+  const [themeMode, setThemeMode] = useState("system");
   const [rhythmId, setRhythmId] = useState("relax");
   const [customRhythm, setCustomRhythm] = useState({ inhale: 4, hold: 4, exhale: 6 });
   const [noiseType, setNoiseType] = useState("none");
@@ -129,6 +473,11 @@ export default function App() {
   const scheduleRef = useRef(() => {});
 
   const t = useMemo(() => copy[lang], [lang]);
+  const systemScheme = useColorScheme();
+  const resolvedTheme =
+    themeMode === "system" ? (systemScheme === "dark" ? "night" : "day") : themeMode;
+  const palette = themes[resolvedTheme];
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const rhythm = useMemo(() => {
     if (rhythmId === "custom") return customRhythm;
@@ -339,7 +688,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.page}>
-      <StatusBar style="dark" />
+      <StatusBar style={resolvedTheme === "night" ? "light" : "dark"} />
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.headerText}>
@@ -360,6 +709,34 @@ export default function App() {
               >
                 <Text style={[styles.langText, lang === "zh" && styles.langTextActive]}>CN</Text>
               </Pressable>
+            </View>
+            <View style={styles.themeRow}>
+              <Text style={styles.themeLabel}>{t.theme}</Text>
+              <View style={styles.themeSwitcher}>
+                {[
+                  { id: "system", label: t.themeSystem },
+                  { id: "day", label: t.themeDay },
+                  { id: "night", label: t.themeNight },
+                ].map((item) => (
+                  <Pressable
+                    key={item.id}
+                    style={[
+                      styles.themeButton,
+                      themeMode === item.id && styles.themeButtonActive,
+                    ]}
+                    onPress={() => setThemeMode(item.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.themeText,
+                        themeMode === item.id && styles.themeTextActive,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           </View>
         </View>
@@ -427,9 +804,9 @@ export default function App() {
                       minimumValue={2}
                       maximumValue={10}
                       step={1}
-                      minimumTrackTintColor="#82C9B2"
-                      maximumTrackTintColor="#E6E1DC"
-                      thumbTintColor="#1F5C4C"
+                      minimumTrackTintColor={palette.accent}
+                      maximumTrackTintColor={palette.border}
+                      thumbTintColor={palette.accentStrong}
                       value={customRhythm[key]}
                       onValueChange={(value) =>
                         setCustomRhythm((prev) => ({ ...prev, [key]: value }))
@@ -485,9 +862,9 @@ export default function App() {
               minimumValue={0}
               maximumValue={1}
               step={0.01}
-              minimumTrackTintColor="#82C9B2"
-              maximumTrackTintColor="#E6E1DC"
-              thumbTintColor="#1F5C4C"
+              minimumTrackTintColor={palette.accent}
+              maximumTrackTintColor={palette.border}
+              thumbTintColor={palette.accentStrong}
               value={volume}
               onValueChange={(value) => setVolume(value)}
             />
@@ -520,265 +897,3 @@ export default function App() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-    backgroundColor: "#F7F5F1",
-  },
-  container: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    paddingTop: Platform.OS === "android" ? 18 : 6,
-    gap: 16,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-  },
-  headerText: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  headerRight: {
-    alignItems: "flex-end",
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "600",
-    color: "#1F1C19",
-  },
-  subtitle: {
-    marginTop: 4,
-    fontSize: 12,
-    lineHeight: 18,
-    color: "#6F6862",
-  },
-  langSwitcher: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 999,
-    padding: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 6 },
-  },
-  langButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-  },
-  langButtonActive: {
-    backgroundColor: "#1E1B18",
-  },
-  langText: {
-    fontSize: 12,
-    color: "#6F6862",
-    fontWeight: "600",
-  },
-  langTextActive: {
-    color: "#FFFFFF",
-  },
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 26,
-    padding: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#2B2622",
-  },
-  sectionHint: {
-    marginTop: 6,
-    fontSize: 12,
-    color: "#7C746D",
-  },
-  circleWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 18,
-    marginBottom: 8,
-  },
-  circle: {
-    borderRadius: 999,
-    backgroundColor: "#D9F0E7",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  circleButton: {
-    position: "absolute",
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 999,
-    backgroundColor: "#1E1B18",
-  },
-  circleButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 12,
-    letterSpacing: 0.2,
-  },
-  presetGrid: {
-    marginTop: 12,
-    gap: 10,
-  },
-  presetButton: {
-    borderWidth: 1,
-    borderColor: "#E6E1DC",
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: "#FFFFFF",
-  },
-  presetButtonActive: {
-    borderColor: "#8CCBB6",
-    backgroundColor: "#EAF6F1",
-  },
-  presetTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#4E4741",
-  },
-  presetTitleActive: {
-    color: "#1F5C4C",
-  },
-  presetMeta: {
-    marginTop: 4,
-    fontSize: 11,
-    color: "#8A837C",
-  },
-  customBox: {
-    marginTop: 14,
-    padding: 14,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#DDEDE7",
-    backgroundColor: "#F4FBF7",
-    gap: 12,
-  },
-  customRow: {
-    gap: 6,
-  },
-  customLabel: {
-    fontSize: 12,
-    color: "#5E5852",
-  },
-  sliderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  customValue: {
-    fontSize: 12,
-    color: "#5E5852",
-    width: 50,
-    textAlign: "right",
-  },
-  timerGrid: {
-    marginTop: 12,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  timerButton: {
-    borderWidth: 1,
-    borderColor: "#E6E1DC",
-    borderRadius: 18,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  timerButtonActive: {
-    borderColor: "#8CCBB6",
-    backgroundColor: "#EAF6F1",
-  },
-  timerText: {
-    fontSize: 12,
-    color: "#5E5852",
-  },
-  timerTextActive: {
-    color: "#1F5C4C",
-    fontWeight: "600",
-  },
-  timerPanel: {
-    marginTop: 12,
-    paddingVertical: 12,
-    borderRadius: 18,
-    backgroundColor: "#EAF6F1",
-    alignItems: "center",
-  },
-  timerTime: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: "#2B2622",
-  },
-  timerStatus: {
-    marginTop: 4,
-    fontSize: 11,
-    color: "#1F5C4C",
-  },
-  sliderHeader: {
-    marginTop: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  sliderLabel: {
-    fontSize: 12,
-    color: "#5E5852",
-    width: 52,
-  },
-  noiseRow: {
-    marginTop: 12,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  noiseButton: {
-    borderWidth: 1,
-    borderColor: "#E6E1DC",
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: "#FFFFFF",
-  },
-  noiseButtonActive: {
-    borderColor: "#8CCBB6",
-    backgroundColor: "#8CCBB6",
-  },
-  noiseText: {
-    fontSize: 12,
-    color: "#5E5852",
-  },
-  noiseTextActive: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-  },
-  tipRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    marginTop: 10,
-  },
-  tipDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginTop: 6,
-    backgroundColor: "#8CCBB6",
-  },
-  tipText: {
-    fontSize: 12,
-    color: "#6F6862",
-    flex: 1,
-  },
-});

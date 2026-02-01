@@ -6,6 +6,8 @@ type Lang = "zh" | "en";
 
 type NoiseType = "none" | "white" | "pink";
 
+type ThemeMode = "system" | "day" | "night";
+
 type RhythmPreset = {
   id: string;
   zh: string;
@@ -20,6 +22,10 @@ type Copy = {
   subtitle: string;
   start: string;
   stop: string;
+  theme: string;
+  themeSystem: string;
+  themeDay: string;
+  themeNight: string;
   breathe: string;
   breatheTip: string;
   rhythm: string;
@@ -55,6 +61,10 @@ const copy: Record<Lang, Copy> = {
     subtitle: "极简、柔和的助眠工具。呼吸引导 + 白/粉红噪音 + 定时关闭。",
     start: "一键开始",
     stop: "一键停止",
+    theme: "外观",
+    themeSystem: "跟随系统",
+    themeDay: "白天",
+    themeNight: "夜间",
     breathe: "睡眠引导",
     breatheTip: "选择节奏与时长，圆圈大小随呼吸时间变化。",
     rhythm: "呼吸节奏",
@@ -92,6 +102,10 @@ const copy: Record<Lang, Copy> = {
     subtitle: "A minimal, gentle sleep aid: breathing, noise, and timer.",
     start: "Start",
     stop: "Stop",
+    theme: "Theme",
+    themeSystem: "System",
+    themeDay: "Day",
+    themeNight: "Night",
     breathe: "Sleep Guide",
     breatheTip: "Pick a rhythm and duration. Circle size reflects your breath time.",
     rhythm: "Breathing rhythm",
@@ -136,6 +150,7 @@ const minuteOptions = [10, 15, 20, 30, 45, 60, 90];
 
 export default function Home() {
   const [lang, setLang] = useState<Lang>("en");
+  const [themeMode, setThemeMode] = useState<ThemeMode>("system");
   const [rhythmId, setRhythmId] = useState<string>("relax");
   const [customRhythm, setCustomRhythm] = useState({
     inhale: 4,
@@ -178,6 +193,7 @@ export default function Home() {
     try {
       const parsed = JSON.parse(saved);
       if (parsed.lang) setLang(parsed.lang);
+      if (parsed.themeMode) setThemeMode(parsed.themeMode);
       if (parsed.rhythmId) setRhythmId(parsed.rhythmId);
       if (parsed.customRhythm) setCustomRhythm(parsed.customRhythm);
       if (parsed.noiseType) setNoiseType(parsed.noiseType);
@@ -195,6 +211,7 @@ export default function Home() {
       "quietsleep_prefs",
       JSON.stringify({
         lang,
+        themeMode,
         rhythmId,
         customRhythm,
         noiseType,
@@ -202,7 +219,12 @@ export default function Home() {
         timerMinutes,
       })
     );
-  }, [lang, rhythmId, customRhythm, noiseType, volume, timerMinutes]);
+  }, [lang, themeMode, rhythmId, customRhythm, noiseType, volume, timerMinutes]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.dataset.theme = themeMode;
+  }, [themeMode]);
 
   useEffect(() => {
     sessionRunningRef.current = sessionRunning;
@@ -402,7 +424,13 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 via-amber-50 to-emerald-50 text-zinc-900">
+    <div
+      className="min-h-screen text-[color:var(--qs-text)]"
+      style={{
+        backgroundImage:
+          "linear-gradient(180deg, var(--qs-page-start) 0%, var(--qs-page-mid) 45%, var(--qs-page-end) 100%)",
+      }}
+    >
       <style>{`
         @keyframes breathDynamic {
           0% { transform: scale(0.85); opacity: 0.75; }
@@ -417,7 +445,7 @@ export default function Home() {
             <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
               {t.title}
             </h1>
-            <p className="mt-2 max-w-2xl text-sm text-zinc-600 md:text-base">
+            <p className="mt-2 max-w-2xl text-sm text-[color:var(--qs-text-muted)] md:text-base">
               {t.subtitle}
             </p>
           </div>
@@ -425,42 +453,67 @@ export default function Home() {
             <button
               type="button"
               onClick={toggleSession}
-              className="rounded-full bg-zinc-900 px-6 py-2 text-sm text-white transition hover:bg-zinc-800"
+              className="rounded-full bg-[color:var(--qs-button-bg)] px-6 py-2 text-sm text-[color:var(--qs-button-text)] transition hover:bg-[color:var(--qs-button-hover)]"
             >
               {sessionRunning ? t.stop : t.start}
             </button>
-            <div className="flex items-center gap-2 rounded-full bg-white/80 p-1 shadow-sm">
-              <button
-                type="button"
-                onClick={() => setLang("zh")}
-                className={`rounded-full px-4 py-1.5 text-sm transition ${
-                  lang === "zh"
-                    ? "bg-zinc-900 text-white"
-                    : "text-zinc-600 hover:text-zinc-900"
-                }`}
-              >
-                中文
-              </button>
-              <button
-                type="button"
-                onClick={() => setLang("en")}
-                className={`rounded-full px-4 py-1.5 text-sm transition ${
-                  lang === "en"
-                    ? "bg-zinc-900 text-white"
-                    : "text-zinc-600 hover:text-zinc-900"
-                }`}
-              >
-                EN
-              </button>
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-2 rounded-full bg-[color:var(--qs-pill-bg)] p-1 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setLang("zh")}
+                  className={`rounded-full px-4 py-1.5 text-sm transition ${
+                    lang === "zh"
+                      ? "bg-[color:var(--qs-pill-active-bg)] text-[color:var(--qs-pill-active-text)]"
+                      : "text-[color:var(--qs-text-muted)] hover:text-[color:var(--qs-text)]"
+                  }`}
+                >
+                  中文
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLang("en")}
+                  className={`rounded-full px-4 py-1.5 text-sm transition ${
+                    lang === "en"
+                      ? "bg-[color:var(--qs-pill-active-bg)] text-[color:var(--qs-pill-active-text)]"
+                      : "text-[color:var(--qs-text-muted)] hover:text-[color:var(--qs-text)]"
+                  }`}
+                >
+                  EN
+                </button>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-[color:var(--qs-text-muted)]">
+                <span>{t.theme}</span>
+                <div className="flex items-center gap-1 rounded-full bg-[color:var(--qs-pill-bg)] p-1 shadow-sm">
+                  {([
+                    { id: "system", label: t.themeSystem },
+                    { id: "day", label: t.themeDay },
+                    { id: "night", label: t.themeNight },
+                  ] as const).map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setThemeMode(item.id)}
+                      className={`rounded-full px-3 py-1 text-xs transition ${
+                        themeMode === item.id
+                          ? "bg-[color:var(--qs-pill-active-bg)] text-[color:var(--qs-pill-active-text)]"
+                          : "text-[color:var(--qs-text-muted)] hover:text-[color:var(--qs-text)]"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </header>
 
         <main className="mt-10 grid gap-6 md:grid-cols-3">
-          <section className="rounded-3xl bg-white/90 p-6 shadow-sm md:col-span-2">
+          <section className="rounded-3xl bg-[color:var(--qs-card)] p-6 shadow-sm md:col-span-2">
             <div>
               <h2 className="text-xl font-semibold">{t.breathe}</h2>
-              <p className="mt-2 text-sm text-zinc-600">{t.breatheTip}</p>
+              <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.breatheTip}</p>
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -471,14 +524,14 @@ export default function Home() {
                   onClick={() => setRhythmId(preset.id)}
                   className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
                     rhythmId === preset.id
-                      ? "border-emerald-400 bg-emerald-50 text-emerald-900"
-                      : "border-zinc-200 text-zinc-600 hover:border-emerald-200"
+                      ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
+                      : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
                   }`}
                 >
                   <div className="font-medium">
                     {lang === "zh" ? preset.zh : preset.en}
                   </div>
-                  <div className="text-xs text-zinc-500">
+                  <div className="text-xs text-[color:var(--qs-text-soft)]">
                     {t.inhale} {preset.inhale}{t.seconds} · {t.hold} {preset.hold}{t.seconds} · {t.exhale} {preset.exhale}{t.seconds}
                   </div>
                 </button>
@@ -488,22 +541,22 @@ export default function Home() {
                 onClick={() => setRhythmId("custom")}
                 className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
                   rhythmId === "custom"
-                    ? "border-emerald-400 bg-emerald-50 text-emerald-900"
-                    : "border-zinc-200 text-zinc-600 hover:border-emerald-200"
+                    ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
+                    : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
                 }`}
               >
                 <div className="font-medium">{t.custom}</div>
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-[color:var(--qs-text-soft)]">
                   {t.inhale} {customRhythm.inhale}{t.seconds} · {t.hold} {customRhythm.hold}{t.seconds} · {t.exhale} {customRhythm.exhale}{t.seconds}
                 </div>
               </button>
             </div>
 
             {rhythmId === "custom" && (
-              <div className="mt-4 grid gap-3 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/40 p-4 text-sm">
+              <div className="mt-4 grid gap-3 rounded-2xl border border-dashed border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] p-4 text-sm">
                 {(["inhale", "hold", "exhale"] as const).map((key) => (
                   <label key={key} className="flex items-center justify-between gap-4">
-                    <span className="capitalize text-zinc-700">
+                    <span className="capitalize text-[color:var(--qs-text-secondary)]">
                       {key === "inhale" ? t.inhale : key === "hold" ? t.hold : t.exhale}
                     </span>
                     <div className="flex items-center gap-3">
@@ -520,7 +573,7 @@ export default function Home() {
                           }))
                         }
                       />
-                      <span className="w-10 text-right text-zinc-600">
+                      <span className="w-10 text-right text-[color:var(--qs-text-muted)]">
                         {customRhythm[key]}{t.seconds}
                       </span>
                     </div>
@@ -531,7 +584,7 @@ export default function Home() {
 
             <div className="mt-6 flex items-center justify-center">
               <div
-                className="relative flex items-center justify-center rounded-full bg-emerald-100/80 shadow-inner"
+                className="relative flex items-center justify-center rounded-full bg-[color:var(--qs-accent-soft-2)] shadow-inner"
                 style={{
                   width: `${circleSize}px`,
                   height: `${circleSize}px`,
@@ -540,14 +593,14 @@ export default function Home() {
                     : "none",
                 }}
               >
-                <div className="h-1/2 w-1/2 rounded-full bg-white/80" />
+                <div className="h-1/2 w-1/2 rounded-full bg-[color:var(--qs-card-soft)]" />
               </div>
             </div>
           </section>
 
-          <section className="rounded-3xl bg-white/90 p-6 shadow-sm">
+          <section className="rounded-3xl bg-[color:var(--qs-card)] p-6 shadow-sm">
             <h2 className="text-xl font-semibold">{t.timer}</h2>
-            <p className="mt-2 text-sm text-zinc-600">{t.timerTip}</p>
+            <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.timerTip}</p>
 
             <div className="mt-4 grid grid-cols-3 gap-2">
               {minuteOptions.map((m) => (
@@ -557,8 +610,8 @@ export default function Home() {
                   onClick={() => setTimerMinutes(m)}
                   className={`rounded-2xl border px-3 py-2 text-sm transition ${
                     timerMinutes === m
-                      ? "border-emerald-400 bg-emerald-50 text-emerald-900"
-                      : "border-zinc-200 text-zinc-600 hover:border-emerald-200"
+                      ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
+                      : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
                   }`}
                 >
                   {m} {t.minutes}
@@ -569,19 +622,19 @@ export default function Home() {
                 onClick={() => setTimerMinutes(null)}
                 className={`rounded-2xl border px-3 py-2 text-sm transition ${
                   timerMinutes === null
-                    ? "border-emerald-400 bg-emerald-50 text-emerald-900"
-                    : "border-zinc-200 text-zinc-600 hover:border-emerald-200"
+                    ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
+                    : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
                 }`}
               >
                 {t.noTimer}
               </button>
             </div>
 
-            <div className="mt-5 rounded-2xl bg-emerald-50 p-4 text-center">
+            <div className="mt-5 rounded-2xl bg-[color:var(--qs-panel-bg)] p-4 text-center">
               <div className="text-2xl font-semibold">
                 {timerRunning ? formatTime(remaining) : "--:--"}
               </div>
-              <div className="mt-1 text-xs text-emerald-700">
+              <div className="mt-1 text-xs text-[color:var(--qs-accent-strong)]">
                 {timerRunning
                   ? t.statusRunning
                   : timerMinutes
@@ -591,13 +644,13 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="rounded-3xl bg-white/90 p-6 shadow-sm md:col-span-3">
+          <section className="rounded-3xl bg-[color:var(--qs-card)] p-6 shadow-sm md:col-span-3">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold">{t.noise}</h2>
-                <p className="mt-2 text-sm text-zinc-600">{t.noiseTip}</p>
+                <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.noiseTip}</p>
               </div>
-              <div className="flex items-center gap-2 text-sm text-zinc-600">
+              <div className="flex items-center gap-2 text-sm text-[color:var(--qs-text-muted)]">
                 <span>{t.volume}</span>
                 <input
                   type="range"
@@ -618,8 +671,8 @@ export default function Home() {
                   onClick={() => setNoiseType(type as NoiseType)}
                   className={`rounded-full px-5 py-2 text-sm transition ${
                     noiseType === type
-                      ? "bg-emerald-500 text-white"
-                      : "border border-zinc-200 text-zinc-700 hover:border-emerald-300"
+                      ? "bg-[color:var(--qs-accent)] text-[color:var(--qs-button-text)]"
+                      : "border border-[color:var(--qs-border)] text-[color:var(--qs-text-secondary)] hover:border-[color:var(--qs-accent-border)]"
                   }`}
                 >
                   {type === "none" ? t.noiseNone : type === "white" ? t.white : t.pink}
@@ -628,12 +681,12 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="rounded-3xl bg-white/90 p-6 shadow-sm md:col-span-3">
+          <section className="rounded-3xl bg-[color:var(--qs-card)] p-6 shadow-sm md:col-span-3">
             <h2 className="text-xl font-semibold">{t.guide}</h2>
-            <ul className="mt-3 space-y-2 text-sm text-zinc-600">
+            <ul className="mt-3 space-y-2 text-sm text-[color:var(--qs-text-muted)]">
               {t.guideItems.map((item) => (
                 <li key={item} className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-emerald-300" />
+                  <span className="h-2 w-2 rounded-full bg-[color:var(--qs-dot)]" />
                   {item}
                 </li>
               ))}
@@ -641,7 +694,7 @@ export default function Home() {
           </section>
         </main>
 
-        <footer className="mt-10 text-center text-xs text-zinc-500">
+        <footer className="mt-10 text-center text-xs text-[color:var(--qs-text-soft)]">
           {t.footer}
         </footer>
       </div>

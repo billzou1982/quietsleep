@@ -1,27 +1,102 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  color-scheme: light;
+  --qs-page-start: #fafaf9;
+  --qs-page-mid: #fffbeb;
+  --qs-page-end: #ecfdf5;
+  --qs-text: #18181b;
+  --qs-text-secondary: #3f3f46;
+  --qs-text-muted: #52525b;
+  --qs-text-soft: #71717a;
+  --qs-card: rgba(255, 255, 255, 0.9);
+  --qs-card-soft: rgba(255, 255, 255, 0.8);
+  --qs-border: #e4e4e7;
+  --qs-button-bg: #18181b;
+  --qs-button-hover: #27272a;
+  --qs-button-text: #ffffff;
+  --qs-pill-bg: rgba(255, 255, 255, 0.8);
+  --qs-pill-active-bg: #18181b;
+  --qs-pill-active-text: #ffffff;
+  --qs-accent: #10b981;
+  --qs-accent-strong: #059669;
+  --qs-accent-soft: #d1fae5;
+  --qs-accent-soft-2: #ecfdf5;
+  --qs-accent-border: #34d399;
+  --qs-panel-bg: #d1fae5;
+  --qs-dot: #6ee7b7;
+  --color-background: var(--qs-page-start);
+  --color-foreground: var(--qs-text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+:root[data-theme="night"] {
+  color-scheme: dark;
+  --qs-page-start: #0b1120;
+  --qs-page-mid: #111827;
+  --qs-page-end: #0f172a;
+  --qs-text: #e5e7eb;
+  --qs-text-secondary: #cbd5f5;
+  --qs-text-muted: #94a3b8;
+  --qs-text-soft: #64748b;
+  --qs-card: rgba(15, 23, 42, 0.92);
+  --qs-card-soft: rgba(15, 23, 42, 0.85);
+  --qs-border: #334155;
+  --qs-button-bg: #f8fafc;
+  --qs-button-hover: #e2e8f0;
+  --qs-button-text: #0f172a;
+  --qs-pill-bg: rgba(30, 41, 59, 0.9);
+  --qs-pill-active-bg: #f8fafc;
+  --qs-pill-active-text: #0f172a;
+  --qs-accent: #34d399;
+  --qs-accent-strong: #a7f3d0;
+  --qs-accent-soft: rgba(16, 185, 129, 0.18);
+  --qs-accent-soft-2: rgba(16, 185, 129, 0.25);
+  --qs-accent-border: #34d399;
+  --qs-panel-bg: rgba(16, 185, 129, 0.18);
+  --qs-dot: #34d399;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root[data-theme="system"] {
+    color-scheme: dark;
+    --qs-page-start: #0b1120;
+    --qs-page-mid: #111827;
+    --qs-page-end: #0f172a;
+    --qs-text: #e5e7eb;
+    --qs-text-secondary: #cbd5f5;
+    --qs-text-muted: #94a3b8;
+    --qs-text-soft: #64748b;
+    --qs-card: rgba(15, 23, 42, 0.92);
+    --qs-card-soft: rgba(15, 23, 42, 0.85);
+    --qs-border: #334155;
+    --qs-button-bg: #f8fafc;
+    --qs-button-hover: #e2e8f0;
+    --qs-button-text: #0f172a;
+    --qs-pill-bg: rgba(30, 41, 59, 0.9);
+    --qs-pill-active-bg: #f8fafc;
+    --qs-pill-active-text: #0f172a;
+    --qs-accent: #34d399;
+    --qs-accent-strong: #a7f3d0;
+    --qs-accent-soft: rgba(16, 185, 129, 0.18);
+    --qs-accent-soft-2: rgba(16, 185, 129, 0.25);
+    --qs-accent-border: #34d399;
+    --qs-panel-bg: rgba(16, 185, 129, 0.18);
+    --qs-dot: #34d399;
   }
 }
 
+@theme inline {
+  --color-background: var(--qs-page-start);
+  --color-foreground: var(--qs-text);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--qs-page-start);
+  color: var(--qs-text);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
 
