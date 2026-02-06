@@ -75,7 +75,7 @@ type Copy = {
 
 const copy: Record<Lang, Copy> = {
   zh: {
-    title: "轻眠 · QuietSleep",
+    title: "轻眠",
     subtitle: "极简、柔和的助眠工具。呼吸引导 + 噪音/自然声 + 定时关闭。",
     start: "开始",
     stop: "结束",
@@ -216,10 +216,16 @@ export default function Home() {
   const [noiseEnabled, setNoiseEnabled] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
+  const [phase, setPhase] = useState<"idle" | "inhale" | "hold" | "exhale">("idle");
+  const [phaseRemaining, setPhaseRemaining] = useState<number | null>(null);
+  const [showMobileNav, setShowMobileNav] = useState(false);
 
   const lastGuideRef = useRef<string | null>(null);
   const lastNoiseRef = useRef<NoiseType | null>(null);
   const lastTimerRef = useRef<number | null>(null);
+  const phaseIntervalRef = useRef<number | null>(null);
+  const navTimeoutRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [sessionRunning, setSessionRunning] = useState(false);
@@ -253,6 +259,16 @@ export default function Home() {
   const holdPercent = ((rhythm.inhale + rhythm.hold) / cycleSeconds) * 100;
   const circleSize = Math.min(240, 160 + rhythm.inhale * 10);
   const circleScale = Math.min(1.2, 0.85 + rhythm.inhale * 0.04);
+  const idleCircleSize = Math.min(300, 220 + rhythm.inhale * 5);
+  const displayCircleSize = sessionRunning ? circleSize : idleCircleSize;
+  const phaseLabel =
+    phase === "inhale"
+      ? t.inhaleWord
+      : phase === "hold"
+        ? t.holdWord
+        : phase === "exhale"
+          ? t.exhaleWord
+          : t.start;
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -413,6 +429,26 @@ export default function Home() {
       window.clearTimeout(cycleTimeoutRef.current);
       cycleTimeoutRef.current = null;
     }
+    if (phaseIntervalRef.current) {
+      window.clearInterval(phaseIntervalRef.current);
+      phaseIntervalRef.current = null;
+    }
+    setPhase("idle");
+    setPhaseRemaining(null);
+  }, []);
+
+  const startPhase = useCallback((next: "inhale" | "hold" | "exhale", seconds: number) => {
+    if (phaseIntervalRef.current) {
+      window.clearInterval(phaseIntervalRef.current);
+    }
+    setPhase(next);
+    setPhaseRemaining(seconds);
+    phaseIntervalRef.current = window.setInterval(() => {
+      setPhaseRemaining((prev) => {
+        if (prev === null) return null;
+        return prev > 1 ? prev - 1 : 0;
+      });
+    }, 1000);
   }, []);
 
   const scheduleBreathCycle = useCallback(() => {
@@ -421,18 +457,25 @@ export default function Home() {
     const holdMs = rhythm.hold * 1000;
     const exhaleMs = rhythm.exhale * 1000;
 
+    startPhase("inhale", rhythm.inhale);
     playVoice("inhale");
     cueTimeoutsRef.current.push(
-      window.setTimeout(() => playVoice("hold"), inhaleMs)
+      window.setTimeout(() => {
+        startPhase("hold", rhythm.hold);
+        playVoice("hold");
+      }, inhaleMs)
     );
     cueTimeoutsRef.current.push(
-      window.setTimeout(() => playVoice("exhale"), inhaleMs + holdMs)
+      window.setTimeout(() => {
+        startPhase("exhale", rhythm.exhale);
+        playVoice("exhale");
+      }, inhaleMs + holdMs)
     );
 
     cycleTimeoutRef.current = window.setTimeout(() => {
       if (sessionRunningRef.current) scheduleBreathCycle();
     }, inhaleMs + holdMs + exhaleMs);
-  }, [clearCues, rhythm, playVoice]);
+  }, [clearCues, rhythm, playVoice, startPhase]);
 
   useEffect(() => {
     voiceRef.current = null;
@@ -542,6 +585,40 @@ export default function Home() {
     setLang((prev) => (prev === "zh" ? "en" : "zh"));
   };
 
+  const triggerMobileNav = useCallback(() => {
+    setShowMobileNav(true);
+    if (navTimeoutRef.current) {
+      window.clearTimeout(navTimeoutRef.current);
+    }
+    navTimeoutRef.current = window.setTimeout(() => {
+      setShowMobileNav(false);
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isMobile = window.innerWidth < 768;
+    if (!isMobile) return;
+    triggerMobileNav();
+    const handleTouchStart = (event: TouchEvent) => {
+      touchStartYRef.current = event.touches[0]?.clientY ?? null;
+    };
+    const handleTouchEnd = (event: TouchEvent) => {
+      const start = touchStartYRef.current;
+      const end = event.changedTouches[0]?.clientY ?? null;
+      if (start !== null && end !== null && end - start > 40 && window.scrollY === 0) {
+        triggerMobileNav();
+      }
+      touchStartYRef.current = null;
+    };
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [triggerMobileNav]);
+
   return (
     <div
       className="min-h-screen text-[color:var(--qs-text)]"
@@ -563,51 +640,67 @@ export default function Home() {
         .qs-switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: white; border-radius: 999px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform 0.2s ease; }
         .qs-switch input:checked::after { transform: translateX(18px); }
         .qs-slider { display: none; }
+        .qs-mobile-nav { position: fixed; left: 16px; right: 16px; bottom: 20px; display: flex; justify-content: space-around; gap: 12px; padding: 12px 16px; border-radius: 20px; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(15,23,42,0.12); }
+        .qs-mobile-nav button { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--qs-text-muted); }
+        .qs-mobile-nav .active { color: var(--qs-accent-strong); }
       `}</style>
       <div className="mx-auto max-w-5xl px-6 py-10 md:py-16">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-              {t.title}
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-[color:var(--qs-text-muted)] md:text-base">
-              {t.subtitle}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
+        <header className="flex flex-col items-center justify-center gap-4 md:flex-row md:justify-between">
+          <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+            {t.title}
+          </h1>
+          <div className="hidden items-center gap-2 md:flex">
             <button
               type="button"
-              onClick={toggleSession}
-              className="rounded-full bg-[color:var(--qs-button-bg)] px-6 py-2 text-sm text-[color:var(--qs-button-text)] transition hover:bg-[color:var(--qs-button-hover)]"
+              onClick={cycleTheme}
+              title={`${t.theme}: ${
+                themeMode === "system"
+                  ? t.themeSystem
+                  : themeMode === "day"
+                    ? t.themeDay
+                    : t.themeNight
+              }`}
+              className="flex h-9 w-12 items-center justify-center rounded-full border border-[color:var(--qs-border)] bg-[color:var(--qs-pill-bg)] text-base shadow-sm transition hover:text-[color:var(--qs-text)]"
             >
-              {sessionRunning ? t.stop : t.start}
+              <span aria-hidden="true">{themeIcons[themeMode].icon}</span>
             </button>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={cycleTheme}
-                title={`${t.theme}: ${
-                  themeMode === "system"
-                    ? t.themeSystem
-                    : themeMode === "day"
-                      ? t.themeDay
-                      : t.themeNight
-                }`}
-                className="flex h-9 w-12 items-center justify-center rounded-full border border-[color:var(--qs-border)] bg-[color:var(--qs-pill-bg)] text-base shadow-sm transition hover:text-[color:var(--qs-text)]"
-              >
-                <span aria-hidden="true">{themeIcons[themeMode].icon}</span>
-              </button>
-              <button
-                type="button"
-                onClick={toggleLang}
-                title={lang === "zh" ? "中文" : "English"}
-                className="flex h-9 items-center justify-center rounded-full border border-[color:var(--qs-border)] bg-[color:var(--qs-pill-bg)] px-4 text-xs font-semibold text-[color:var(--qs-text)] shadow-sm transition hover:text-[color:var(--qs-text)]"
-              >
-                {lang === "zh" ? "中文" : "EN"}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={toggleLang}
+              title={lang === "zh" ? "中文" : "English"}
+              className="flex h-9 items-center justify-center rounded-full border border-[color:var(--qs-border)] bg-[color:var(--qs-pill-bg)] px-4 text-xs font-semibold text-[color:var(--qs-text)] shadow-sm transition hover:text-[color:var(--qs-text)]"
+            >
+              {lang === "zh" ? "中文" : "EN"}
+            </button>
           </div>
         </header>
+
+        <div className="mt-10 flex justify-center">
+          <button
+            type="button"
+            onClick={toggleSession}
+            className="relative flex items-center justify-center rounded-full bg-[color:var(--qs-accent-soft-2)] text-center shadow-inner transition"
+            style={{
+              width: `${displayCircleSize}px`,
+              height: `${displayCircleSize}px`,
+              animation:
+                sessionRunning && guideEnabled
+                  ? `breathDynamic ${cycleSeconds}s ease-in-out infinite`
+                  : "none",
+            }}
+          >
+            <div className="flex flex-col items-center justify-center gap-1 px-6">
+              <span className="text-lg font-semibold text-[color:var(--qs-text)]">
+                {sessionRunning && guideEnabled ? phaseLabel : sessionRunning ? t.stop : t.start}
+              </span>
+              {sessionRunning && guideEnabled && phaseRemaining !== null && (
+                <span className="text-base text-[color:var(--qs-text-muted)]">
+                  {phaseRemaining}
+                </span>
+              )}
+            </div>
+          </button>
+        </div>
 
         <main className="mt-10 grid gap-6 md:grid-cols-3">
           <section className="rounded-3xl bg-[color:var(--qs-card)] p-6 shadow-sm md:col-span-2">
@@ -715,21 +808,6 @@ export default function Home() {
               </div>
             )}
 
-            <div className="mt-6 flex items-center justify-center">
-              <div
-                className="relative flex items-center justify-center rounded-full bg-[color:var(--qs-accent-soft-2)] shadow-inner"
-                style={{
-                  width: `${circleSize}px`,
-                  height: `${circleSize}px`,
-                  animation:
-                    sessionRunning && guideEnabled
-                      ? `breathDynamic ${cycleSeconds}s ease-in-out infinite`
-                      : "none",
-                }}
-              >
-                <div className="h-1/2 w-1/2 rounded-full bg-[color:var(--qs-card-soft)]" />
-              </div>
-            </div>
           </section>
 
           <section className="rounded-3xl bg-[color:var(--qs-card)] p-6 shadow-sm">
@@ -845,6 +923,25 @@ export default function Home() {
           </section>
 
         </main>
+
+        {showMobileNav && (
+          <div className="qs-mobile-nav md:hidden">
+            <button type="button" onClick={cycleTheme} className="active">
+              <span className="text-base">{themeIcons[themeMode].icon}</span>
+              <span>
+                {themeMode === "system"
+                  ? t.themeSystem
+                  : themeMode === "day"
+                    ? t.themeDay
+                    : t.themeNight}
+              </span>
+            </button>
+            <button type="button" onClick={toggleLang}>
+              <span className="text-base">{lang === "zh" ? "中" : "EN"}</span>
+              <span>{lang === "zh" ? "中文" : "English"}</span>
+            </button>
+          </div>
+        )}
 
         <footer className="mt-10 text-center text-xs text-[color:var(--qs-text-soft)]">
           {t.footer}
