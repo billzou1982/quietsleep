@@ -592,7 +592,7 @@ export default function Home() {
     }
     navTimeoutRef.current = window.setTimeout(() => {
       setShowMobileNav(false);
-    }, 3000);
+    }, 5000);
   }, []);
 
   useEffect(() => {
@@ -603,18 +603,22 @@ export default function Home() {
     const handleTouchStart = (event: TouchEvent) => {
       touchStartYRef.current = event.touches[0]?.clientY ?? null;
     };
-    const handleTouchEnd = (event: TouchEvent) => {
+    const handleTouchMove = (event: TouchEvent) => {
       const start = touchStartYRef.current;
-      const end = event.changedTouches[0]?.clientY ?? null;
-      if (start !== null && end !== null && end - start > 40 && window.scrollY === 0) {
+      const current = event.touches[0]?.clientY ?? null;
+      if (start !== null && current !== null && current - start > 35 && window.scrollY <= 0) {
         triggerMobileNav();
       }
+    };
+    const handleTouchEnd = () => {
       touchStartYRef.current = null;
     };
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
     return () => {
       window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
     };
   }, [triggerMobileNav]);
@@ -690,11 +694,11 @@ export default function Home() {
             }}
           >
             <div className="flex flex-col items-center justify-center gap-1 px-6">
-              <span className="text-lg font-semibold text-[color:var(--qs-text)]">
+              <span className="text-xl font-semibold text-[color:var(--qs-text)] md:text-2xl">
                 {sessionRunning && guideEnabled ? phaseLabel : sessionRunning ? t.stop : t.start}
               </span>
               {sessionRunning && guideEnabled && phaseRemaining !== null && (
-                <span className="text-base text-[color:var(--qs-text-muted)]">
+                <span className="text-2xl font-semibold text-[color:var(--qs-text)] md:text-3xl">
                   {phaseRemaining}
                 </span>
               )}
