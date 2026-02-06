@@ -309,10 +309,6 @@ export default function Home() {
   }, [sessionRunning]);
 
   useEffect(() => {
-    voiceRef.current = null;
-  }, [lang]);
-
-  useEffect(() => {
     if (ambientAudioRef.current) {
       ambientAudioRef.current.volume = volume;
     }
@@ -407,6 +403,13 @@ export default function Home() {
       if (sessionRunningRef.current) scheduleBreathCycle();
     }, inhaleMs + holdMs + exhaleMs);
   }, [clearCues, rhythm]);
+
+  useEffect(() => {
+    voiceRef.current = null;
+    if (!sessionRunningRef.current) return;
+    ensureVoice();
+    scheduleBreathCycle();
+  }, [lang, scheduleBreathCycle]);
 
   useEffect(() => {
     if (!sessionRunningRef.current) return;
@@ -693,7 +696,13 @@ export default function Home() {
                   max={1}
                   step={0.01}
                   value={volume}
-                  onChange={(e) => setVolume(Number(e.target.value))}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setVolume(next);
+                    if (ambientAudioRef.current) {
+                      ambientAudioRef.current.volume = next;
+                    }
+                  }}
                 />
               </div>
             </div>
