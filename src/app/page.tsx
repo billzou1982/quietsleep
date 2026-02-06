@@ -665,8 +665,8 @@ export default function Home() {
         .qs-switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: white; border-radius: 999px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform 0.2s ease; }
         .qs-switch input:checked::after { transform: translateX(18px); }
         .qs-slider { display: none; }
-        .qs-mobile-nav { position: fixed; left: 16px; right: 16px; bottom: 20px; display: flex; justify-content: space-around; gap: 12px; padding: 12px 16px; border-radius: 20px; background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(15,23,42,0.12); }
-        .qs-mobile-nav button { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--qs-text-muted); }
+        .qs-mobile-nav { position: fixed; left: 16px; right: 16px; bottom: 20px; display: flex; justify-content: space-around; gap: 12px; padding: 12px 16px; border-radius: 20px; background: var(--qs-card); backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(15,23,42,0.16); border: 1px solid var(--qs-border); }
+        .qs-mobile-nav button { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; color: var(--qs-text); }
         .qs-mobile-nav .active { color: var(--qs-accent-strong); }
       `}</style>
       <div className="mx-auto max-w-5xl px-6 py-10 md:py-16">
