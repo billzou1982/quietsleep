@@ -218,6 +218,7 @@ export default function Home() {
   const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
   const [phase, setPhase] = useState<"idle" | "inhale" | "hold" | "exhale">("idle");
   const [phaseRemaining, setPhaseRemaining] = useState<number | null>(null);
+  const [phaseTotal, setPhaseTotal] = useState<number | null>(null);
   const [showMobileNav, setShowMobileNav] = useState(false);
 
   const lastGuideRef = useRef<string | null>(null);
@@ -269,6 +270,24 @@ export default function Home() {
         : phase === "exhale"
           ? t.exhaleWord
           : t.start;
+  const phaseScale = useMemo(() => {
+    const minScale = 0.85;
+    const maxScale = circleScale;
+    if (!sessionRunning || !guideEnabled || phase === "idle" || !phaseTotal || phaseRemaining === null) {
+      return 1;
+    }
+    const progress = 1 - Math.min(1, Math.max(0, phaseRemaining / phaseTotal));
+    if (phase === "inhale") {
+      return minScale + (maxScale - minScale) * progress;
+    }
+    if (phase === "hold") {
+      return maxScale;
+    }
+    if (phase === "exhale") {
+      return maxScale - (maxScale - minScale) * progress;
+    }
+    return 1;
+  }, [circleScale, guideEnabled, phase, phaseRemaining, phaseTotal, sessionRunning]);
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -435,6 +454,7 @@ export default function Home() {
     }
     setPhase("idle");
     setPhaseRemaining(null);
+    setPhaseTotal(null);
   }, []);
 
   const startPhase = useCallback((next: "inhale" | "hold" | "exhale", seconds: number) => {
@@ -443,6 +463,7 @@ export default function Home() {
     }
     setPhase(next);
     setPhaseRemaining(seconds);
+    setPhaseTotal(seconds);
     phaseIntervalRef.current = window.setInterval(() => {
       setPhaseRemaining((prev) => {
         if (prev === null) return null;
@@ -687,13 +708,13 @@ export default function Home() {
             style={{
               width: `${displayCircleSize}px`,
               height: `${displayCircleSize}px`,
-              animation:
-                sessionRunning && guideEnabled
-                  ? `breathDynamic ${cycleSeconds}s ease-in-out infinite`
-                  : "none",
+              animation: "none",
             }}
           >
-            <div className="flex flex-col items-center justify-center gap-1 px-6">
+            <div
+              className="flex flex-col items-center justify-center gap-1 px-6"
+              style={{ transform: `scale(${phaseScale})`, transition: "transform 0.2s linear" }}
+            >
               <span className="text-xl font-semibold text-[color:var(--qs-text)] md:text-2xl">
                 {sessionRunning && guideEnabled ? phaseLabel : sessionRunning ? t.stop : t.start}
               </span>
