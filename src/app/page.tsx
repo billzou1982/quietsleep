@@ -861,16 +861,9 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="mt-5 rounded-2xl bg-[color:var(--qs-panel-bg)] p-4 text-center">
+            <div className="mt-5 rounded-2xl bg-[color:var(--qs-panel-bg)] px-4 py-3 text-center">
               <div className="text-2xl font-semibold">
                 {timerRunning ? formatTime(remaining) : "--:--"}
-              </div>
-              <div className="mt-1 text-xs text-[color:var(--qs-accent-strong)]">
-                {timerRunning
-                  ? t.statusRunning
-                  : timerMinutes
-                    ? t.statusIdle
-                    : t.statusNotSet}
               </div>
             </div>
           </section>
