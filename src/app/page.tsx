@@ -708,13 +708,13 @@ export default function Home() {
             style={{
               width: `${displayCircleSize}px`,
               height: `${displayCircleSize}px`,
+              transform: `scale(${phaseScale})`,
+              transition: "transform 0.2s linear",
+              transformOrigin: "center",
               animation: "none",
             }}
           >
-            <div
-              className="flex flex-col items-center justify-center gap-1 px-6"
-              style={{ transform: `scale(${phaseScale})`, transition: "transform 0.2s linear" }}
-            >
+            <div className="flex flex-col items-center justify-center gap-1 px-6">
               <span className="text-xl font-semibold text-[color:var(--qs-text)] md:text-2xl">
                 {sessionRunning && guideEnabled ? phaseLabel : sessionRunning ? t.stop : t.start}
               </span>
