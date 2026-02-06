@@ -6,12 +6,13 @@ type Lang = "zh" | "en";
 
 type NoiseType =
   | "none"
+  | "white"
+  | "pink"
+  | "brown"
   | "rain"
   | "ocean"
   | "stream"
-  | "forest"
-  | "wind"
-  | "campfire";
+  | "forest";
 
 type ThemeMode = "system" | "day" | "night";
 
@@ -52,12 +53,13 @@ type Copy = {
   noise: string;
   noiseTip: string;
   noiseNone: string;
+  white: string;
+  pink: string;
+  brown: string;
   rain: string;
   ocean: string;
   stream: string;
   forest: string;
-  wind: string;
-  campfire: string;
   volume: string;
   timer: string;
   timerTip: string;
@@ -72,7 +74,7 @@ type Copy = {
 const copy: Record<Lang, Copy> = {
   zh: {
     title: "轻眠 · QuietSleep",
-    subtitle: "极简、柔和的助眠工具。呼吸引导 + 白/粉红噪音 + 定时关闭。",
+    subtitle: "极简、柔和的助眠工具。呼吸引导 + 噪音/自然声 + 定时关闭。",
     start: "开始",
     stop: "结束",
     theme: "外观",
@@ -93,12 +95,13 @@ const copy: Record<Lang, Copy> = {
     noise: "助眠噪音",
     noiseTip: "人声引导可与自然环境音同时播放。",
     noiseNone: "无噪音",
+    white: "白噪音",
+    pink: "粉红噪音",
+    brown: "棕色噪音",
     rain: "雨声",
     ocean: "海浪",
-    stream: "溪流",
-    forest: "森林夜虫",
-    wind: "微风",
-    campfire: "篝火",
+    stream: "山间溪流",
+    forest: "森林虫声",
     volume: "音量",
     timer: "定时关闭",
     timerTip: "默认不启用，选择时长后生效。",
@@ -111,7 +114,7 @@ const copy: Record<Lang, Copy> = {
   },
   en: {
     title: "QuietSleep",
-    subtitle: "A minimal, gentle sleep aid: breathing, noise, and timer.",
+    subtitle: "A minimal, gentle sleep aid: breathing, noise, and ambience.",
     start: "Start",
     stop: "Stop",
     theme: "Theme",
@@ -132,12 +135,13 @@ const copy: Record<Lang, Copy> = {
     noise: "Sleep Noise",
     noiseTip: "Voice cues can play together with ambience.",
     noiseNone: "None",
+    white: "White Noise",
+    pink: "Pink Noise",
+    brown: "Brown Noise",
     rain: "Rain",
     ocean: "Ocean Waves",
-    stream: "Stream",
-    forest: "Forest Night",
-    wind: "Wind",
-    campfire: "Campfire",
+    stream: "Mountain Stream",
+    forest: "Forest Insects",
     volume: "Volume",
     timer: "Sleep Timer",
     timerTip: "Off by default. Choose a duration to enable.",
@@ -165,22 +169,24 @@ const themeIcons: Record<ThemeMode, ThemeIcon> = {
 };
 
 const ambientTracks: Record<Exclude<NoiseType, "none">, string> = {
+  white: "/audio/white-noise.wav",
+  pink: "/audio/pink-noise.wav",
+  brown: "/audio/brown-noise.wav",
   rain: "/audio/rain.mp3",
   ocean: "/audio/ocean-waves.mp3",
-  stream: "/audio/stream.ogg",
+  stream: "/audio/stream.mp3",
   forest: "/audio/forest-night-insects.mp3",
-  wind: "/audio/wind.wav",
-  campfire: "/audio/campfire.wav",
 };
 
 const noiseOptions: NoiseType[] = [
   "none",
+  "white",
+  "pink",
+  "brown",
   "rain",
   "ocean",
   "stream",
   "forest",
-  "wind",
-  "campfire",
 ];
 
 
@@ -210,12 +216,13 @@ export default function Home() {
 
   const noiseLabels: Record<NoiseType, string> = {
     none: t.noiseNone,
+    white: t.white,
+    pink: t.pink,
+    brown: t.brown,
     rain: t.rain,
     ocean: t.ocean,
     stream: t.stream,
     forest: t.forest,
-    wind: t.wind,
-    campfire: t.campfire,
   };
 
   const rhythm = useMemo(() => {
@@ -240,7 +247,9 @@ export default function Home() {
       if (parsed.themeMode) setThemeMode(parsed.themeMode);
       if (parsed.rhythmId) setRhythmId(parsed.rhythmId);
       if (parsed.customRhythm) setCustomRhythm(parsed.customRhythm);
-      if (parsed.noiseType) setNoiseType(parsed.noiseType);
+      if (parsed.noiseType && noiseOptions.includes(parsed.noiseType)) {
+        setNoiseType(parsed.noiseType);
+      }
       if (parsed.volume !== undefined) setVolume(parsed.volume);
       if (parsed.timerMinutes !== undefined) setTimerMinutes(parsed.timerMinutes);
     } catch {
@@ -309,6 +318,15 @@ export default function Home() {
     }
   }, [volume]);
 
+  useEffect(() => {
+    if (!sessionRunning) return;
+    if (noiseType === "none") {
+      stopNoise();
+      return;
+    }
+    startNoise();
+  }, [noiseType, sessionRunning, startNoise, stopNoise]);
+
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
       .toString()
@@ -342,9 +360,10 @@ export default function Home() {
     audio.src = ambientTracks[noiseType];
     audio.loop = true;
     audio.preload = "auto";
+    audio.volume = volume;
     audio.currentTime = 0;
     void audio.play();
-  }, [noiseType]);
+  }, [noiseType, volume]);
 
   const stopNoise = useCallback(() => {
     const audio = ambientAudioRef.current;
