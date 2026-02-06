@@ -60,6 +60,9 @@ type Copy = {
   ocean: string;
   stream: string;
   forest: string;
+  voice: string;
+  voiceOn: string;
+  voiceOff: string;
   timer: string;
   timerTip: string;
   minutes: string;
@@ -101,6 +104,9 @@ const copy: Record<Lang, Copy> = {
     ocean: "海浪",
     stream: "山间溪流",
     forest: "森林虫声",
+    voice: "节奏声",
+    voiceOn: "启用",
+    voiceOff: "不启用",
     timer: "定时关闭",
     timerTip: "默认不启用，选择时长后生效。",
     minutes: "分钟",
@@ -140,6 +146,9 @@ const copy: Record<Lang, Copy> = {
     ocean: "Ocean Waves",
     stream: "Mountain Stream",
     forest: "Forest Insects",
+    voice: "Voice Cues",
+    voiceOn: "On",
+    voiceOff: "Off",
     timer: "Sleep Timer",
     timerTip: "Off by default. Choose a duration to enable.",
     minutes: "minutes",
@@ -197,6 +206,7 @@ export default function Home() {
     exhale: 6,
   });
   const [noiseType, setNoiseType] = useState<NoiseType>("none");
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -246,6 +256,9 @@ export default function Home() {
       if (parsed.noiseType && noiseOptions.includes(parsed.noiseType)) {
         setNoiseType(parsed.noiseType);
       }
+      if (parsed.voiceEnabled !== undefined) {
+        setVoiceEnabled(Boolean(parsed.voiceEnabled));
+      }
       if (parsed.timerMinutes !== undefined) setTimerMinutes(parsed.timerMinutes);
     } catch {
       // ignore
@@ -263,10 +276,11 @@ export default function Home() {
         rhythmId,
         customRhythm,
         noiseType,
+        voiceEnabled,
         timerMinutes,
       })
     );
-  }, [lang, themeMode, rhythmId, customRhythm, noiseType, timerMinutes]);
+  }, [lang, themeMode, rhythmId, customRhythm, noiseType, voiceEnabled, timerMinutes]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -356,6 +370,7 @@ export default function Home() {
   }, [noiseType, sessionRunning, startNoise, stopNoise]);
 
   const playVoice = (type: "inhale" | "hold" | "exhale") => {
+    if (!voiceEnabled) return;
     if (!voiceRef.current) return;
     const audio = voiceRef.current[type];
     audio.pause();
@@ -394,9 +409,10 @@ export default function Home() {
   useEffect(() => {
     voiceRef.current = null;
     if (!sessionRunningRef.current) return;
+    if (!voiceEnabled) return;
     ensureVoice();
     scheduleBreathCycle();
-  }, [lang, scheduleBreathCycle]);
+  }, [lang, scheduleBreathCycle, voiceEnabled]);
 
   useEffect(() => {
     if (!sessionRunningRef.current) return;
@@ -574,6 +590,32 @@ export default function Home() {
                 <div className="text-xs text-[color:var(--qs-text-soft)]">
                   {t.inhale} {customRhythm.inhale}{t.seconds} · {t.hold} {customRhythm.hold}{t.seconds} · {t.exhale} {customRhythm.exhale}{t.seconds}
                 </div>
+              </button>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+              <span className="text-[color:var(--qs-text-muted)]">{t.voice}</span>
+              <button
+                type="button"
+                onClick={() => setVoiceEnabled(true)}
+                className={`rounded-full px-4 py-1.5 transition ${
+                  voiceEnabled
+                    ? "bg-[color:var(--qs-accent)] text-[color:var(--qs-button-text)]"
+                    : "border border-[color:var(--qs-border)] text-[color:var(--qs-text-secondary)] hover:border-[color:var(--qs-accent-border)]"
+                }`}
+              >
+                {t.voiceOn}
+              </button>
+              <button
+                type="button"
+                onClick={() => setVoiceEnabled(false)}
+                className={`rounded-full px-4 py-1.5 transition ${
+                  !voiceEnabled
+                    ? "bg-[color:var(--qs-accent)] text-[color:var(--qs-button-text)]"
+                    : "border border-[color:var(--qs-border)] text-[color:var(--qs-text-secondary)] hover:border-[color:var(--qs-accent-border)]"
+                }`}
+              >
+                {t.voiceOff}
               </button>
             </div>
 
