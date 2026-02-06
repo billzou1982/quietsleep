@@ -60,7 +60,6 @@ type Copy = {
   ocean: string;
   stream: string;
   forest: string;
-  volume: string;
   timer: string;
   timerTip: string;
   minutes: string;
@@ -102,7 +101,6 @@ const copy: Record<Lang, Copy> = {
     ocean: "海浪",
     stream: "山间溪流",
     forest: "森林虫声",
-    volume: "音量",
     timer: "定时关闭",
     timerTip: "默认不启用，选择时长后生效。",
     minutes: "分钟",
@@ -142,7 +140,6 @@ const copy: Record<Lang, Copy> = {
     ocean: "Ocean Waves",
     stream: "Mountain Stream",
     forest: "Forest Insects",
-    volume: "Volume",
     timer: "Sleep Timer",
     timerTip: "Off by default. Choose a duration to enable.",
     minutes: "minutes",
@@ -200,7 +197,6 @@ export default function Home() {
     exhale: 6,
   });
   const [noiseType, setNoiseType] = useState<NoiseType>("none");
-  const [volume, setVolume] = useState(0.2);
   const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -250,7 +246,6 @@ export default function Home() {
       if (parsed.noiseType && noiseOptions.includes(parsed.noiseType)) {
         setNoiseType(parsed.noiseType);
       }
-      if (parsed.volume !== undefined) setVolume(parsed.volume);
       if (parsed.timerMinutes !== undefined) setTimerMinutes(parsed.timerMinutes);
     } catch {
       // ignore
@@ -268,11 +263,10 @@ export default function Home() {
         rhythmId,
         customRhythm,
         noiseType,
-        volume,
         timerMinutes,
       })
     );
-  }, [lang, themeMode, rhythmId, customRhythm, noiseType, volume, timerMinutes]);
+  }, [lang, themeMode, rhythmId, customRhythm, noiseType, timerMinutes]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -308,12 +302,6 @@ export default function Home() {
     sessionRunningRef.current = sessionRunning;
   }, [sessionRunning]);
 
-  useEffect(() => {
-    if (ambientAudioRef.current) {
-      ambientAudioRef.current.volume = volume;
-    }
-  }, [volume]);
-
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
       .toString()
@@ -347,10 +335,9 @@ export default function Home() {
     audio.src = ambientTracks[noiseType];
     audio.loop = true;
     audio.preload = "auto";
-    audio.volume = volume;
     audio.currentTime = 0;
     void audio.play();
-  }, [noiseType, volume]);
+  }, [noiseType]);
 
   const stopNoise = useCallback(() => {
     const audio = ambientAudioRef.current;
@@ -683,28 +670,9 @@ export default function Home() {
           </section>
 
           <section className="rounded-3xl bg-[color:var(--qs-card)] p-6 shadow-sm md:col-span-3">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold">{t.noise}</h2>
-                <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.noiseTip}</p>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-[color:var(--qs-text-muted)]">
-                <span>{t.volume}</span>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.01}
-                  value={volume}
-                  onChange={(e) => {
-                    const next = Number(e.target.value);
-                    setVolume(next);
-                    if (ambientAudioRef.current) {
-                      ambientAudioRef.current.volume = next;
-                    }
-                  }}
-                />
-              </div>
+            <div>
+              <h2 className="text-xl font-semibold">{t.noise}</h2>
+              <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.noiseTip}</p>
             </div>
 
             <audio ref={ambientAudioRef} loop preload="auto" className="hidden" />
