@@ -206,7 +206,9 @@ export default function Home() {
     exhale: 6,
   });
   const [noiseType, setNoiseType] = useState<NoiseType>("none");
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [guideEnabled, setGuideEnabled] = useState(true);
+  const [noiseEnabled, setNoiseEnabled] = useState(true);
+  const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -256,8 +258,14 @@ export default function Home() {
       if (parsed.noiseType && noiseOptions.includes(parsed.noiseType)) {
         setNoiseType(parsed.noiseType);
       }
-      if (parsed.voiceEnabled !== undefined) {
-        setVoiceEnabled(Boolean(parsed.voiceEnabled));
+      if (parsed.guideEnabled !== undefined) {
+        setGuideEnabled(Boolean(parsed.guideEnabled));
+      }
+      if (parsed.noiseEnabled !== undefined) {
+        setNoiseEnabled(Boolean(parsed.noiseEnabled));
+      }
+      if (parsed.timerEnabled !== undefined) {
+        setTimerEnabled(Boolean(parsed.timerEnabled));
       }
       if (parsed.timerMinutes !== undefined) setTimerMinutes(parsed.timerMinutes);
     } catch {
@@ -276,11 +284,13 @@ export default function Home() {
         rhythmId,
         customRhythm,
         noiseType,
-        voiceEnabled,
+        guideEnabled,
+        noiseEnabled,
+        timerEnabled,
         timerMinutes,
       })
     );
-  }, [lang, themeMode, rhythmId, customRhythm, noiseType, voiceEnabled, timerMinutes]);
+  }, [lang, themeMode, rhythmId, customRhythm, noiseType, guideEnabled, noiseEnabled, timerEnabled, timerMinutes]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -343,6 +353,7 @@ export default function Home() {
   };
 
   const startNoise = useCallback(() => {
+    if (!noiseEnabled) return;
     if (noiseType === "none") return;
     const audio = ambientAudioRef.current;
     if (!audio) return;
@@ -351,7 +362,7 @@ export default function Home() {
     audio.preload = "auto";
     audio.currentTime = 0;
     void audio.play();
-  }, [noiseType]);
+  }, [noiseType, noiseEnabled]);
 
   const stopNoise = useCallback(() => {
     const audio = ambientAudioRef.current;
@@ -362,21 +373,21 @@ export default function Home() {
 
   useEffect(() => {
     if (!sessionRunning) return;
-    if (noiseType === "none") {
+    if (!noiseEnabled || noiseType === "none") {
       stopNoise();
       return;
     }
     startNoise();
-  }, [noiseType, sessionRunning, startNoise, stopNoise]);
+  }, [noiseType, noiseEnabled, sessionRunning, startNoise, stopNoise]);
 
-  const playVoice = (type: "inhale" | "hold" | "exhale") => {
-    if (!voiceEnabled) return;
+  const playVoice = useCallback((type: "inhale" | "hold" | "exhale") => {
+    if (!guideEnabled) return;
     if (!voiceRef.current) return;
     const audio = voiceRef.current[type];
     audio.pause();
     audio.currentTime = 0;
     void audio.play();
-  };
+  }, [guideEnabled]);
 
   const clearCues = useCallback(() => {
     cueTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
@@ -404,20 +415,26 @@ export default function Home() {
     cycleTimeoutRef.current = window.setTimeout(() => {
       if (sessionRunningRef.current) scheduleBreathCycle();
     }, inhaleMs + holdMs + exhaleMs);
-  }, [clearCues, rhythm]);
+  }, [clearCues, rhythm, playVoice]);
 
   useEffect(() => {
     voiceRef.current = null;
     if (!sessionRunningRef.current) return;
-    if (!voiceEnabled) return;
+    if (!guideEnabled) return;
     ensureVoice();
     scheduleBreathCycle();
-  }, [lang, scheduleBreathCycle, voiceEnabled]);
+  }, [lang, scheduleBreathCycle, guideEnabled]);
 
   useEffect(() => {
     if (!sessionRunningRef.current) return;
+    if (!guideEnabled) return;
     scheduleBreathCycle();
-  }, [rhythm, scheduleBreathCycle]);
+  }, [rhythm, scheduleBreathCycle, guideEnabled]);
+
+  useEffect(() => {
+    if (guideEnabled) return;
+    clearCues();
+  }, [guideEnabled, clearCues]);
 
   useEffect(() => {
     if (!sessionRunningRef.current) return;
@@ -453,11 +470,18 @@ export default function Home() {
     return () => window.clearInterval(id);
   }, [stopSession, timerRunning]);
 
+  useEffect(() => {
+    if (!timerEnabled) {
+      setTimerRunning(false);
+      setRemaining(0);
+    }
+  }, [timerEnabled]);
+
   const startSession = () => {
     if (sessionRunning) return;
-    ensureVoice();
+    if (guideEnabled) ensureVoice();
     startNoise();
-    if (timerMinutes) {
+    if (timerEnabled && timerMinutes) {
       setRemaining(timerMinutes * 60);
       setTimerRunning(true);
     } else {
@@ -466,7 +490,9 @@ export default function Home() {
     }
     setSessionRunning(true);
     sessionRunningRef.current = true;
-    scheduleBreathCycle();
+    if (guideEnabled) {
+      scheduleBreathCycle();
+    }
   };
 
   const toggleSession = () => {
@@ -504,6 +530,12 @@ export default function Home() {
           ${holdPercent}% { transform: scale(${circleScale}); opacity: 1; }
           100% { transform: scale(0.85); opacity: 0.75; }
         }
+        .qs-switch { position: relative; display: inline-flex; align-items: center; }
+        .qs-switch input { appearance: none; width: 44px; height: 26px; border-radius: 999px; background: #d1d5db; transition: background 0.2s ease; position: relative; outline: none; cursor: pointer; }
+        .qs-switch input:checked { background: #34c759; }
+        .qs-switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: white; border-radius: 999px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform 0.2s ease; }
+        .qs-switch input:checked::after { transform: translateX(18px); }
+        .qs-slider { display: none; }
       `}</style>
       <div className="mx-auto max-w-5xl px-6 py-10 md:py-16">
         <header className="flex flex-wrap items-center justify-between gap-4">
@@ -552,9 +584,19 @@ export default function Home() {
 
         <main className="mt-10 grid gap-6 md:grid-cols-3">
           <section className="rounded-3xl bg-[color:var(--qs-card)] p-6 shadow-sm md:col-span-2">
-            <div>
-              <h2 className="text-xl font-semibold">{t.breathe}</h2>
-              <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.breatheTip}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">{t.breathe}</h2>
+                <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.breatheTip}</p>
+              </div>
+              <label className="qs-switch">
+                <input
+                  type="checkbox"
+                  checked={guideEnabled}
+                  onChange={(e) => setGuideEnabled(e.target.checked)}
+                />
+                <span className="qs-slider" />
+              </label>
             </div>
 
             <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -593,31 +635,6 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-              <span className="text-[color:var(--qs-text-muted)]">{t.voice}</span>
-              <button
-                type="button"
-                onClick={() => setVoiceEnabled(true)}
-                className={`rounded-full px-4 py-1.5 transition ${
-                  voiceEnabled
-                    ? "bg-[color:var(--qs-accent)] text-[color:var(--qs-button-text)]"
-                    : "border border-[color:var(--qs-border)] text-[color:var(--qs-text-secondary)] hover:border-[color:var(--qs-accent-border)]"
-                }`}
-              >
-                {t.voiceOn}
-              </button>
-              <button
-                type="button"
-                onClick={() => setVoiceEnabled(false)}
-                className={`rounded-full px-4 py-1.5 transition ${
-                  !voiceEnabled
-                    ? "bg-[color:var(--qs-accent)] text-[color:var(--qs-button-text)]"
-                    : "border border-[color:var(--qs-border)] text-[color:var(--qs-text-secondary)] hover:border-[color:var(--qs-accent-border)]"
-                }`}
-              >
-                {t.voiceOff}
-              </button>
-            </div>
 
             {rhythmId === "custom" && (
               <div className="mt-4 grid gap-3 rounded-2xl border border-dashed border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] p-4 text-sm">
@@ -655,9 +672,10 @@ export default function Home() {
                 style={{
                   width: `${circleSize}px`,
                   height: `${circleSize}px`,
-                  animation: sessionRunning
-                    ? `breathDynamic ${cycleSeconds}s ease-in-out infinite`
-                    : "none",
+                  animation:
+                    sessionRunning && guideEnabled
+                      ? `breathDynamic ${cycleSeconds}s ease-in-out infinite`
+                      : "none",
                 }}
               >
                 <div className="h-1/2 w-1/2 rounded-full bg-[color:var(--qs-card-soft)]" />
@@ -666,15 +684,36 @@ export default function Home() {
           </section>
 
           <section className="rounded-3xl bg-[color:var(--qs-card)] p-6 shadow-sm">
-            <h2 className="text-xl font-semibold">{t.timer}</h2>
-            <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.timerTip}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">{t.timer}</h2>
+                <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.timerTip}</p>
+              </div>
+              <label className="qs-switch">
+                <input
+                  type="checkbox"
+                  checked={timerEnabled}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setTimerEnabled(next);
+                    if (!next) {
+                      setTimerMinutes(null);
+                    }
+                  }}
+                />
+                <span className="qs-slider" />
+              </label>
+            </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2">
               {minuteOptions.map((m) => (
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setTimerMinutes(m)}
+                  onClick={() => {
+                    setTimerEnabled(true);
+                    setTimerMinutes(m);
+                  }}
                   className={`rounded-2xl border px-3 py-2 text-sm transition ${
                     timerMinutes === m
                       ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
@@ -686,7 +725,10 @@ export default function Home() {
               ))}
               <button
                 type="button"
-                onClick={() => setTimerMinutes(null)}
+                onClick={() => {
+                  setTimerEnabled(false);
+                  setTimerMinutes(null);
+                }}
                 className={`rounded-2xl border px-3 py-2 text-sm transition ${
                   timerMinutes === null
                     ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
@@ -712,9 +754,27 @@ export default function Home() {
           </section>
 
           <section className="rounded-3xl bg-[color:var(--qs-card)] p-6 shadow-sm md:col-span-3">
-            <div>
-              <h2 className="text-xl font-semibold">{t.noise}</h2>
-              <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.noiseTip}</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">{t.noise}</h2>
+                <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.noiseTip}</p>
+              </div>
+              <label className="qs-switch">
+                <input
+                  type="checkbox"
+                  checked={noiseEnabled}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setNoiseEnabled(next);
+                    if (!next) {
+                      stopNoise();
+                    } else if (noiseType === "none") {
+                      setNoiseType("white");
+                    }
+                  }}
+                />
+                <span className="qs-slider" />
+              </label>
             </div>
 
             <audio ref={ambientAudioRef} loop preload="auto" className="hidden" />
