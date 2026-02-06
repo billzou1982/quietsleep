@@ -166,7 +166,14 @@ const presets: RhythmPreset[] = [
   { id: "relax", zh: "舒缓 4-4-6", en: "Relax 4-4-6", inhale: 4, hold: 4, exhale: 6 },
 ];
 
-const minuteOptions = [10, 15, 20, 30, 45, 60, 90];
+const minuteOptions = [
+  { value: 10, labelZh: "10 分钟", labelEn: "10 min" },
+  { value: 20, labelZh: "20 分钟", labelEn: "20 min" },
+  { value: 30, labelZh: "30 分钟", labelEn: "30 min" },
+  { value: 60, labelZh: "60 分钟", labelEn: "60 min" },
+  { value: 240, labelZh: "4 小时", labelEn: "4 hr" },
+  { value: 480, labelZh: "8 小时", labelEn: "8 hr" },
+];
 
 const themeIcons: Record<ThemeMode, ThemeIcon> = {
   system: { label: "System", icon: "💻" },
@@ -185,7 +192,6 @@ const ambientTracks: Record<Exclude<NoiseType, "none">, string> = {
 };
 
 const noiseOptions: NoiseType[] = [
-  "none",
   "white",
   "pink",
   "brown",
@@ -199,15 +205,15 @@ const noiseOptions: NoiseType[] = [
 export default function Home() {
   const [lang, setLang] = useState<Lang>("en");
   const [themeMode, setThemeMode] = useState<ThemeMode>("system");
-  const [rhythmId, setRhythmId] = useState<string>("relax");
+  const [rhythmId, setRhythmId] = useState<string>(presets[0].id);
   const [customRhythm, setCustomRhythm] = useState({
     inhale: 4,
     hold: 4,
     exhale: 6,
   });
-  const [noiseType, setNoiseType] = useState<NoiseType>("none");
-  const [guideEnabled, setGuideEnabled] = useState(true);
-  const [noiseEnabled, setNoiseEnabled] = useState(true);
+  const [noiseType, setNoiseType] = useState<NoiseType>("white");
+  const [guideEnabled, setGuideEnabled] = useState(false);
+  const [noiseEnabled, setNoiseEnabled] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
   const [remaining, setRemaining] = useState(0);
@@ -432,11 +438,21 @@ export default function Home() {
   }, [rhythm, scheduleBreathCycle, guideEnabled]);
 
   useEffect(() => {
-    if (guideEnabled) return;
-    clearCues();
-  }, [guideEnabled, clearCues]);
+    if (!guideEnabled) {
+      clearCues();
+      return;
+    }
+    if (!sessionRunningRef.current) return;
+    ensureVoice();
+    scheduleBreathCycle();
+  }, [guideEnabled, clearCues, scheduleBreathCycle]);
 
   useEffect(() => {
+    if (!timerEnabled) {
+      setTimerRunning(false);
+      setRemaining(0);
+      return;
+    }
     if (!sessionRunningRef.current) return;
     if (!timerMinutes) {
       setTimerRunning(false);
@@ -445,7 +461,7 @@ export default function Home() {
     }
     setRemaining(timerMinutes * 60);
     setTimerRunning(true);
-  }, [timerMinutes]);
+  }, [timerEnabled, timerMinutes]);
 
   const stopSession = useCallback(() => {
     setSessionRunning(false);
@@ -593,7 +609,17 @@ export default function Home() {
                 <input
                   type="checkbox"
                   checked={guideEnabled}
-                  onChange={(e) => setGuideEnabled(e.target.checked)}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    setGuideEnabled(next);
+                    if (!next) {
+                      clearCues();
+                      return;
+                    }
+                    if (!presets.some((preset) => preset.id === rhythmId)) {
+                      setRhythmId(presets[0].id);
+                    }
+                  }}
                 />
                 <span className="qs-slider" />
               </label>
@@ -604,9 +630,12 @@ export default function Home() {
                 <button
                   key={preset.id}
                   type="button"
-                  onClick={() => setRhythmId(preset.id)}
+                  onClick={() => {
+                    setGuideEnabled(true);
+                    setRhythmId(preset.id);
+                  }}
                   className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
-                    rhythmId === preset.id
+                    guideEnabled && rhythmId === preset.id
                       ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
                       : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
                   }`}
@@ -621,9 +650,12 @@ export default function Home() {
               ))}
               <button
                 type="button"
-                onClick={() => setRhythmId("custom")}
+                onClick={() => {
+                  setGuideEnabled(true);
+                  setRhythmId("custom");
+                }}
                 className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
-                  rhythmId === "custom"
+                  guideEnabled && rhythmId === "custom"
                     ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
                     : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
                 }`}
@@ -636,7 +668,7 @@ export default function Home() {
             </div>
 
 
-            {rhythmId === "custom" && (
+            {guideEnabled && rhythmId === "custom" && (
               <div className="mt-4 grid gap-3 rounded-2xl border border-dashed border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] p-4 text-sm">
                 {(["inhale", "hold", "exhale"] as const).map((key) => (
                   <label key={key} className="flex items-center justify-between gap-4">
@@ -698,6 +730,10 @@ export default function Home() {
                     setTimerEnabled(next);
                     if (!next) {
                       setTimerMinutes(null);
+                      return;
+                    }
+                    if (timerMinutes === null) {
+                      setTimerMinutes(minuteOptions[0].value);
                     }
                   }}
                 />
@@ -706,37 +742,23 @@ export default function Home() {
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-2">
-              {minuteOptions.map((m) => (
+              {minuteOptions.map((option) => (
                 <button
-                  key={m}
+                  key={option.value}
                   type="button"
                   onClick={() => {
                     setTimerEnabled(true);
-                    setTimerMinutes(m);
+                    setTimerMinutes(option.value);
                   }}
                   className={`rounded-2xl border px-3 py-2 text-sm transition ${
-                    timerMinutes === m
+                    timerEnabled && timerMinutes === option.value
                       ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
                       : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
                   }`}
                 >
-                  {m} {t.minutes}
+                  {lang === "zh" ? option.labelZh : option.labelEn}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => {
-                  setTimerEnabled(false);
-                  setTimerMinutes(null);
-                }}
-                className={`rounded-2xl border px-3 py-2 text-sm transition ${
-                  timerMinutes === null
-                    ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
-                    : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
-                }`}
-              >
-                {t.noTimer}
-              </button>
             </div>
 
             <div className="mt-5 rounded-2xl bg-[color:var(--qs-panel-bg)] p-4 text-center">
@@ -768,8 +790,10 @@ export default function Home() {
                     setNoiseEnabled(next);
                     if (!next) {
                       stopNoise();
-                    } else if (noiseType === "none") {
-                      setNoiseType("white");
+                      return;
+                    }
+                    if (!noiseOptions.includes(noiseType)) {
+                      setNoiseType(noiseOptions[0]);
                     }
                   }}
                 />
@@ -784,9 +808,12 @@ export default function Home() {
                 <button
                   key={type}
                   type="button"
-                  onClick={() => setNoiseType(type as NoiseType)}
+                  onClick={() => {
+                    setNoiseEnabled(true);
+                    setNoiseType(type as NoiseType);
+                  }}
                   className={`rounded-full px-5 py-2 text-sm transition ${
-                    noiseType === type
+                    noiseEnabled && noiseType === type
                       ? "bg-[color:var(--qs-accent)] text-[color:var(--qs-button-text)]"
                       : "border border-[color:var(--qs-border)] text-[color:var(--qs-text-secondary)] hover:border-[color:var(--qs-accent-border)]"
                   }`}
