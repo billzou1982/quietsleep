@@ -944,7 +944,14 @@ export default function Home() {
 
         {showMobileNav && (
           <div className="qs-mobile-nav md:hidden">
-            <button type="button" onClick={cycleTheme} className="active">
+            <button
+              type="button"
+              onClick={() => {
+                cycleTheme();
+                triggerMobileNav();
+              }}
+              className="active"
+            >
               <span className="text-base">{themeIcons[themeMode].icon}</span>
               <span>
                 {themeMode === "system"
@@ -954,7 +961,13 @@ export default function Home() {
                     : t.themeNight}
               </span>
             </button>
-            <button type="button" onClick={toggleLang}>
+            <button
+              type="button"
+              onClick={() => {
+                toggleLang();
+                triggerMobileNav();
+              }}
+            >
               <span className="text-base">{lang === "zh" ? "中" : "EN"}</span>
               <span>{lang === "zh" ? "中文" : "English"}</span>
             </button>
