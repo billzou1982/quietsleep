@@ -216,6 +216,10 @@ export default function Home() {
   const [noiseEnabled, setNoiseEnabled] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
+
+  const lastGuideRef = useRef<string | null>(null);
+  const lastNoiseRef = useRef<NoiseType | null>(null);
+  const lastTimerRef = useRef<number | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [sessionRunning, setSessionRunning] = useState(false);
@@ -263,6 +267,7 @@ export default function Home() {
       if (parsed.customRhythm) setCustomRhythm(parsed.customRhythm);
       if (parsed.noiseType && noiseOptions.includes(parsed.noiseType)) {
         setNoiseType(parsed.noiseType);
+        lastNoiseRef.current = parsed.noiseType;
       }
       if (parsed.guideEnabled !== undefined) {
         setGuideEnabled(Boolean(parsed.guideEnabled));
@@ -273,7 +278,13 @@ export default function Home() {
       if (parsed.timerEnabled !== undefined) {
         setTimerEnabled(Boolean(parsed.timerEnabled));
       }
-      if (parsed.timerMinutes !== undefined) setTimerMinutes(parsed.timerMinutes);
+      if (parsed.timerMinutes !== undefined) {
+        setTimerMinutes(parsed.timerMinutes);
+        lastTimerRef.current = parsed.timerMinutes;
+      }
+      if (parsed.rhythmId) {
+        lastGuideRef.current = parsed.rhythmId;
+      }
     } catch {
       // ignore
     }
@@ -616,9 +627,13 @@ export default function Home() {
                       clearCues();
                       return;
                     }
-                    if (!presets.some((preset) => preset.id === rhythmId)) {
-                      setRhythmId(presets[0].id);
-                    }
+                    const fallback = presets[0].id;
+                    const last = lastGuideRef.current;
+                    const chosen =
+                      last && (last === "custom" || presets.some((preset) => preset.id === last))
+                        ? last
+                        : fallback;
+                    setRhythmId(chosen);
                   }}
                 />
                 <span className="qs-slider" />
@@ -633,6 +648,7 @@ export default function Home() {
                   onClick={() => {
                     setGuideEnabled(true);
                     setRhythmId(preset.id);
+                    lastGuideRef.current = preset.id;
                   }}
                   className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
                     guideEnabled && rhythmId === preset.id
@@ -653,6 +669,7 @@ export default function Home() {
                 onClick={() => {
                   setGuideEnabled(true);
                   setRhythmId("custom");
+                  lastGuideRef.current = "custom";
                 }}
                 className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
                   guideEnabled && rhythmId === "custom"
@@ -732,9 +749,9 @@ export default function Home() {
                       setTimerMinutes(null);
                       return;
                     }
-                    if (timerMinutes === null) {
-                      setTimerMinutes(minuteOptions[0].value);
-                    }
+                    const fallback = minuteOptions[0].value;
+                    const chosen = lastTimerRef.current ?? timerMinutes ?? fallback;
+                    setTimerMinutes(chosen);
                   }}
                 />
                 <span className="qs-slider" />
@@ -749,6 +766,7 @@ export default function Home() {
                   onClick={() => {
                     setTimerEnabled(true);
                     setTimerMinutes(option.value);
+                    lastTimerRef.current = option.value;
                   }}
                   className={`rounded-2xl border px-3 py-2 text-sm transition ${
                     timerEnabled && timerMinutes === option.value
@@ -792,9 +810,10 @@ export default function Home() {
                       stopNoise();
                       return;
                     }
-                    if (!noiseOptions.includes(noiseType)) {
-                      setNoiseType(noiseOptions[0]);
-                    }
+                    const fallback = noiseOptions[0];
+                    const last = lastNoiseRef.current;
+                    const chosen = last && noiseOptions.includes(last) ? last : fallback;
+                    setNoiseType(chosen);
                   }}
                 />
                 <span className="qs-slider" />
@@ -811,6 +830,7 @@ export default function Home() {
                   onClick={() => {
                     setNoiseEnabled(true);
                     setNoiseType(type as NoiseType);
+                    lastNoiseRef.current = type as NoiseType;
                   }}
                   className={`rounded-full px-5 py-2 text-sm transition ${
                     noiseEnabled && noiseType === type
