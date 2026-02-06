@@ -4,7 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Lang = "zh" | "en";
 
-type NoiseType = "none" | "white" | "pink";
+type NoiseType =
+  | "none"
+  | "rain"
+  | "ocean"
+  | "stream"
+  | "forest"
+  | "wind"
+  | "campfire";
 
 type ThemeMode = "system" | "day" | "night";
 
@@ -45,8 +52,12 @@ type Copy = {
   noise: string;
   noiseTip: string;
   noiseNone: string;
-  white: string;
-  pink: string;
+  rain: string;
+  ocean: string;
+  stream: string;
+  forest: string;
+  wind: string;
+  campfire: string;
   volume: string;
   timer: string;
   timerTip: string;
@@ -80,10 +91,14 @@ const copy: Record<Lang, Copy> = {
     exhaleWord: "呼气",
     seconds: "秒",
     noise: "助眠噪音",
-    noiseTip: "人声引导可与助眠噪音同时播放。",
+    noiseTip: "人声引导可与自然环境音同时播放。",
     noiseNone: "无噪音",
-    white: "白噪音",
-    pink: "粉红噪音",
+    rain: "雨声",
+    ocean: "海浪",
+    stream: "溪流",
+    forest: "森林夜虫",
+    wind: "微风",
+    campfire: "篝火",
     volume: "音量",
     timer: "定时关闭",
     timerTip: "默认不启用，选择时长后生效。",
@@ -115,10 +130,14 @@ const copy: Record<Lang, Copy> = {
     exhaleWord: "Exhale",
     seconds: "sec",
     noise: "Sleep Noise",
-    noiseTip: "Voice cues can play together with noise.",
+    noiseTip: "Voice cues can play together with ambience.",
     noiseNone: "None",
-    white: "White Noise",
-    pink: "Pink Noise",
+    rain: "Rain",
+    ocean: "Ocean Waves",
+    stream: "Stream",
+    forest: "Forest Night",
+    wind: "Wind",
+    campfire: "Campfire",
     volume: "Volume",
     timer: "Sleep Timer",
     timerTip: "Off by default. Choose a duration to enable.",
@@ -145,6 +164,26 @@ const themeIcons: Record<ThemeMode, ThemeIcon> = {
   night: { label: "Night", icon: "🌙" },
 };
 
+const ambientTracks: Record<Exclude<NoiseType, "none">, string> = {
+  rain: "/audio/rain.mp3",
+  ocean: "/audio/ocean-waves.mp3",
+  stream: "/audio/stream.ogg",
+  forest: "/audio/forest-night-insects.mp3",
+  wind: "/audio/wind.wav",
+  campfire: "/audio/campfire.wav",
+};
+
+const noiseOptions: NoiseType[] = [
+  "none",
+  "rain",
+  "ocean",
+  "stream",
+  "forest",
+  "wind",
+  "campfire",
+];
+
+
 export default function Home() {
   const [lang, setLang] = useState<Lang>("en");
   const [themeMode, setThemeMode] = useState<ThemeMode>("system");
@@ -161,15 +200,23 @@ export default function Home() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [sessionRunning, setSessionRunning] = useState(false);
 
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const noiseSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  const noiseGainRef = useRef<GainNode | null>(null);
+  const ambientAudioRef = useRef<HTMLAudioElement | null>(null);
   const cueTimeoutsRef = useRef<number[]>([]);
   const cycleTimeoutRef = useRef<number | null>(null);
   const sessionRunningRef = useRef(false);
   const voiceRef = useRef<{ inhale: HTMLAudioElement; hold: HTMLAudioElement; exhale: HTMLAudioElement } | null>(null);
 
   const t = useMemo(() => copy[lang], [lang]);
+
+  const noiseLabels: Record<NoiseType, string> = {
+    none: t.noiseNone,
+    rain: t.rain,
+    ocean: t.ocean,
+    stream: t.stream,
+    forest: t.forest,
+    wind: t.wind,
+    campfire: t.campfire,
+  };
 
   const rhythm = useMemo(() => {
     if (rhythmId === "custom") return customRhythm;
@@ -257,8 +304,8 @@ export default function Home() {
   }, [lang]);
 
   useEffect(() => {
-    if (noiseGainRef.current) {
-      noiseGainRef.current.gain.value = volume;
+    if (ambientAudioRef.current) {
+      ambientAudioRef.current.volume = volume;
     }
   }, [volume]);
 
@@ -272,14 +319,6 @@ export default function Home() {
     return `${m}:${s}`;
   };
 
-  const ensureAudioContext = async () => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new AudioContext();
-    }
-    if (audioCtxRef.current.state === "suspended") {
-      await audioCtxRef.current.resume();
-    }
-  };
 
   const ensureVoice = () => {
     if (typeof window === "undefined") return;
@@ -296,80 +335,23 @@ export default function Home() {
     });
   };
 
-  const createWhiteNoise = (ctx: AudioContext) => {
-    const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < data.length; i += 1) {
-      data[i] = Math.random() * 2 - 1;
-    }
-    return buffer;
-  };
-
-  const createPinkNoise = (ctx: AudioContext) => {
-    const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    let b0 = 0;
-    let b1 = 0;
-    let b2 = 0;
-    let b3 = 0;
-    let b4 = 0;
-    let b5 = 0;
-    let b6 = 0;
-    for (let i = 0; i < data.length; i += 1) {
-      const white = Math.random() * 2 - 1;
-      b0 = 0.99886 * b0 + white * 0.0555179;
-      b1 = 0.99332 * b1 + white * 0.0750759;
-      b2 = 0.969 * b2 + white * 0.153852;
-      b3 = 0.8665 * b3 + white * 0.3104856;
-      b4 = 0.55 * b4 + white * 0.5329522;
-      b5 = -0.7616 * b5 - white * 0.016898;
-      const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-      b6 = white * 0.115926;
-      data[i] = pink * 0.11;
-    }
-    return buffer;
-  };
-
   const startNoise = useCallback(() => {
-    if (!audioCtxRef.current || noiseType === "none") return;
-    const ctx = audioCtxRef.current;
-    const gain = ctx.createGain();
-    gain.gain.value = volume;
-    const source = ctx.createBufferSource();
-    source.buffer = noiseType === "white" ? createWhiteNoise(ctx) : createPinkNoise(ctx);
-    source.loop = true;
-    source.connect(gain);
-    gain.connect(ctx.destination);
-    source.start();
-    noiseSourceRef.current = source;
-    noiseGainRef.current = gain;
-  }, [noiseType, volume]);
+    if (noiseType === "none") return;
+    const audio = ambientAudioRef.current;
+    if (!audio) return;
+    audio.src = ambientTracks[noiseType];
+    audio.loop = true;
+    audio.preload = "auto";
+    audio.currentTime = 0;
+    void audio.play();
+  }, [noiseType]);
 
   const stopNoise = useCallback(() => {
-    if (noiseSourceRef.current) {
-      try {
-        noiseSourceRef.current.stop();
-      } catch {
-        // ignore
-      }
-      noiseSourceRef.current.disconnect();
-      noiseSourceRef.current = null;
-    }
-    if (noiseGainRef.current) {
-      noiseGainRef.current.disconnect();
-      noiseGainRef.current = null;
-    }
+    const audio = ambientAudioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
   }, []);
-
-  useEffect(() => {
-    if (!sessionRunningRef.current) return;
-    if (noiseType === "none") {
-      stopNoise();
-      return;
-    }
-    startNoise();
-    return () => stopNoise();
-  }, [noiseType, startNoise, stopNoise]);
 
   const playVoice = (type: "inhale" | "hold" | "exhale") => {
     if (!voiceRef.current) return;
@@ -446,9 +428,8 @@ export default function Home() {
     return () => window.clearInterval(id);
   }, [stopSession, timerRunning]);
 
-  const startSession = async () => {
+  const startSession = () => {
     if (sessionRunning) return;
-    await ensureAudioContext();
     ensureVoice();
     startNoise();
     if (timerMinutes) {
@@ -698,8 +679,10 @@ export default function Home() {
               </div>
             </div>
 
+            <audio ref={ambientAudioRef} loop preload="auto" className="hidden" />
+
             <div className="mt-5 flex flex-wrap gap-3">
-              {["none", "white", "pink"].map((type) => (
+              {noiseOptions.map((type) => (
                 <button
                   key={type}
                   type="button"
@@ -710,7 +693,7 @@ export default function Home() {
                       : "border border-[color:var(--qs-border)] text-[color:var(--qs-text-secondary)] hover:border-[color:var(--qs-accent-border)]"
                   }`}
                 >
-                  {type === "none" ? t.noiseNone : type === "white" ? t.white : t.pink}
+                  {noiseLabels[type]}
                 </button>
               ))}
             </div>
