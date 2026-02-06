@@ -318,15 +318,6 @@ export default function Home() {
     }
   }, [volume]);
 
-  useEffect(() => {
-    if (!sessionRunning) return;
-    if (noiseType === "none") {
-      stopNoise();
-      return;
-    }
-    startNoise();
-  }, [noiseType, sessionRunning, startNoise, stopNoise]);
-
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
       .toString()
@@ -371,6 +362,15 @@ export default function Home() {
     audio.pause();
     audio.currentTime = 0;
   }, []);
+
+  useEffect(() => {
+    if (!sessionRunning) return;
+    if (noiseType === "none") {
+      stopNoise();
+      return;
+    }
+    startNoise();
+  }, [noiseType, sessionRunning, startNoise, stopNoise]);
 
   const playVoice = (type: "inhale" | "hold" | "exhale") => {
     if (!voiceRef.current) return;
