@@ -258,10 +258,11 @@ export default function Home() {
   const cycleSeconds = rhythm.inhale + rhythm.hold + rhythm.exhale;
   const inhalePercent = (rhythm.inhale / cycleSeconds) * 100;
   const holdPercent = ((rhythm.inhale + rhythm.hold) / cycleSeconds) * 100;
-  const circleSize = Math.min(240, 160 + rhythm.inhale * 10);
-  const circleScale = Math.min(1.2, 0.85 + rhythm.inhale * 0.04);
-  const idleCircleSize = Math.min(300, 220 + rhythm.inhale * 5);
-  const displayCircleSize = sessionRunning ? circleSize : idleCircleSize;
+  const runningBaseSize = 180;
+  const idleCircleSize = 220;
+  const displayCircleSize = sessionRunning ? runningBaseSize : idleCircleSize;
+  const maxDiameter = runningBaseSize + (rhythm.inhale - 1) * 35;
+  const circleScale = maxDiameter / runningBaseSize;
   const phaseLabel =
     phase === "inhale"
       ? t.inhaleWord
@@ -271,7 +272,7 @@ export default function Home() {
           ? t.exhaleWord
           : t.start;
   const phaseScale = useMemo(() => {
-    const minScale = 0.85;
+    const minScale = 1.0;
     const maxScale = circleScale;
     if (!sessionRunning || !guideEnabled || phase === "idle" || !phaseTotal || phaseRemaining === null) {
       return 1;
@@ -654,10 +655,10 @@ export default function Home() {
     >
       <style>{`
         @keyframes breathDynamic {
-          0% { transform: scale(0.85); opacity: 0.75; }
+          0% { transform: scale(1.0); opacity: 0.75; }
           ${inhalePercent}% { transform: scale(${circleScale}); opacity: 1; }
           ${holdPercent}% { transform: scale(${circleScale}); opacity: 1; }
-          100% { transform: scale(0.85); opacity: 0.75; }
+          100% { transform: scale(1.0); opacity: 0.75; }
         }
         .qs-switch { position: relative; display: inline-flex; align-items: center; }
         .qs-switch input { appearance: none; width: 44px; height: 26px; border-radius: 999px; background: #d1d5db; transition: background 0.2s ease; position: relative; outline: none; cursor: pointer; }
