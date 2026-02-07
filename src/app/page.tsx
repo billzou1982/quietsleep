@@ -701,7 +701,7 @@ export default function Home() {
           </div>
         </header>
 
-        <div className="mt-20 mb-16 flex justify-center">
+        <div className="mt-24 mb-20 flex justify-center">
           <button
             type="button"
             onClick={toggleSession}
