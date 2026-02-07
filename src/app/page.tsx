@@ -261,7 +261,7 @@ export default function Home() {
   const runningBaseSize = 180;
   const idleCircleSize = 220;
   const displayCircleSize = sessionRunning ? runningBaseSize : idleCircleSize;
-  const maxDiameter = runningBaseSize + (rhythm.inhale - 1) * 35;
+  const maxDiameter = runningBaseSize + (rhythm.inhale - 1) * 15;
   const circleScale = maxDiameter / runningBaseSize;
   const phaseLabel =
     phase === "inhale"
