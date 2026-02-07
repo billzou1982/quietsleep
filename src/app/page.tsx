@@ -12,7 +12,9 @@ type NoiseType =
   | "rain"
   | "ocean"
   | "stream"
-  | "forest";
+  | "forest"
+  | "campfire"
+  | "singing-bowl";
 
 type ThemeMode = "system" | "day" | "night";
 
@@ -60,6 +62,8 @@ type Copy = {
   ocean: string;
   stream: string;
   forest: string;
+  campfire: string;
+  singingBowl: string;
   voice: string;
   voiceOn: string;
   voiceOff: string;
@@ -100,10 +104,12 @@ const copy: Record<Lang, Copy> = {
     white: "白噪音",
     pink: "粉红噪音",
     brown: "棕色噪音",
-    rain: "雨声",
-    ocean: "海浪",
+    rain: "树林雨声",
+    ocean: "柔和海浪",
     stream: "山间溪流",
     forest: "森林虫声",
+    campfire: "篝火声",
+    singingBowl: "颂钵冥想",
     voice: "节奏声",
     voiceOn: "启用",
     voiceOff: "不启用",
@@ -142,10 +148,12 @@ const copy: Record<Lang, Copy> = {
     white: "White Noise",
     pink: "Pink Noise",
     brown: "Brown Noise",
-    rain: "Rain",
-    ocean: "Ocean Waves",
+    rain: "Forest Rain",
+    ocean: "Gentle Waves",
     stream: "Mountain Stream",
     forest: "Forest Insects",
+    campfire: "Campfire",
+    singingBowl: "Singing Bowl",
     voice: "Voice Cues",
     voiceOn: "On",
     voiceOff: "Off",
@@ -185,10 +193,12 @@ const ambientTracks: Record<Exclude<NoiseType, "none">, string> = {
   white: "/audio/white-noise.wav",
   pink: "/audio/pink-noise.wav",
   brown: "/audio/brown-noise.wav",
-  rain: "/audio/rain.mp3",
-  ocean: "/audio/ocean-waves.mp3",
+  rain: "/audio/forest-rain-light.mp3",
+  ocean: "/audio/ocean-gentle.mp3",
   stream: "/audio/stream.mp3",
   forest: "/audio/forest-night-insects.mp3",
+  campfire: "/audio/campfire.mp3",
+  "singing-bowl": "/audio/singing-bowl.mp3",
 };
 
 const noiseOptions: NoiseType[] = [
@@ -199,6 +209,8 @@ const noiseOptions: NoiseType[] = [
   "ocean",
   "stream",
   "forest",
+  "campfire",
+  "singing-bowl",
 ];
 
 
@@ -248,6 +260,8 @@ export default function Home() {
     ocean: t.ocean,
     stream: t.stream,
     forest: t.forest,
+    campfire: t.campfire,
+    "singing-bowl": t.singingBowl,
   };
 
   const rhythm = useMemo(() => {
