@@ -245,6 +245,7 @@ export default function Home() {
   const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
   const [meditationEnabled, setMeditationEnabled] = useState(false);
+  const [meditationPlaying, setMeditationPlaying] = useState(false);
   const [phase, setPhase] = useState<"idle" | "inhale" | "hold" | "exhale">("idle");
   const [phaseRemaining, setPhaseRemaining] = useState<number | null>(null);
   const [phaseTotal, setPhaseTotal] = useState<number | null>(null);
@@ -466,6 +467,7 @@ export default function Home() {
     meditationBedRef.current?.pause();
     if (meditationVoiceRef.current) meditationVoiceRef.current.currentTime = 0;
     if (meditationBedRef.current) meditationBedRef.current.currentTime = 0;
+    setMeditationPlaying(false);
   }, []);
 
   const startMeditationAudio = useCallback(() => {
@@ -478,6 +480,7 @@ export default function Home() {
     meditationVoiceRef.current.currentTime = 0;
     void meditationBedRef.current.play();
     void meditationVoiceRef.current.play();
+    setMeditationPlaying(true);
   }, [meditationEnabled]);
 
   useEffect(() => {
@@ -492,10 +495,8 @@ export default function Home() {
   useEffect(() => {
     if (!meditationEnabled) {
       stopMeditationAudio();
-      return;
     }
-    startMeditationAudio();
-  }, [meditationEnabled, startMeditationAudio, stopMeditationAudio]);
+  }, [meditationEnabled, stopMeditationAudio]);
 
   const playVoice = useCallback((type: "inhale" | "hold" | "exhale") => {
     if (!guideEnabled) return;
@@ -686,6 +687,19 @@ export default function Home() {
     }
     setMeditationEnabled(false);
     stopMeditationAudio();
+  };
+
+  const toggleMeditationPlayback = () => {
+    if (!meditationEnabled) {
+      handleMeditationToggle(true);
+      startMeditationAudio();
+      return;
+    }
+    if (meditationPlaying) {
+      stopMeditationAudio();
+      return;
+    }
+    startMeditationAudio();
   };
 
   const cycleTheme = () => {
@@ -1059,18 +1073,21 @@ export default function Home() {
               </label>
             </div>
 
-            <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr,1fr]">
-              <div className="rounded-2xl border border-[color:var(--qs-border)] bg-[color:var(--qs-panel-bg)] p-4 text-sm leading-relaxed whitespace-pre-line">
-                {t.meditationScript}
-              </div>
-              <div className="rounded-2xl border border-dashed border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] p-4 text-sm text-[color:var(--qs-text-secondary)]">
-                <div className="text-sm font-medium text-[color:var(--qs-text)]">{t.meditationNote}</div>
-                <p className="mt-2 text-xs text-[color:var(--qs-text-muted)]">
-                  {lang === "zh"
-                    ? "建议音频配置：温柔空灵女声 + 极慢语速 + 低频疗愈铺底 + 微弱流水/微风。"
-                    : "Recommended audio: whisper-soft female voice, slow pacing, low-frequency bed, faint water/wind."}
-                </p>
-              </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={toggleMeditationPlayback}
+                className={`rounded-full px-5 py-2 text-sm transition ${
+                  meditationPlaying
+                    ? "bg-[color:var(--qs-accent)] text-[color:var(--qs-button-text)]"
+                    : "border border-[color:var(--qs-border)] text-[color:var(--qs-text-secondary)] hover:border-[color:var(--qs-accent-border)]"
+                }`}
+              >
+                {meditationPlaying ? (lang === "zh" ? "停止播放" : "Stop") : lang === "zh" ? "播放冥想" : "Play"}
+              </button>
+              <span className="text-xs text-[color:var(--qs-text-soft)]">
+                {lang === "zh" ? "温柔慢语 + 低频疗愈 + 轻微自然白噪" : "Soft voice + low-frequency bed + subtle nature noise"}
+              </span>
             </div>
 
             <audio ref={meditationVoiceRef} preload="auto" className="hidden" src="/audio/meditation-voice.mp3" />
