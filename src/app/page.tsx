@@ -1061,7 +1061,6 @@ export default function Home() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold">{t.meditation}</h2>
-                <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.meditationTip}</p>
               </div>
               <label className="qs-switch">
                 <input
@@ -1073,21 +1072,23 @@ export default function Home() {
               </label>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className="mt-4">
               <button
                 type="button"
                 onClick={toggleMeditationPlayback}
-                className={`rounded-full px-5 py-2 text-sm transition ${
+                className={`w-full rounded-2xl border px-4 py-3 text-left text-sm transition ${
                   meditationPlaying
-                    ? "bg-[color:var(--qs-accent)] text-[color:var(--qs-button-text)]"
-                    : "border border-[color:var(--qs-border)] text-[color:var(--qs-text-secondary)] hover:border-[color:var(--qs-accent-border)]"
+                    ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
+                    : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
                 }`}
               >
-                {meditationPlaying ? (lang === "zh" ? "停止播放" : "Stop") : lang === "zh" ? "播放冥想" : "Play"}
+                <div className="font-medium">
+                  {meditationPlaying ? (lang === "zh" ? "冥想播放中" : "Meditation Playing") : lang === "zh" ? "开启冥想" : "Start Meditation"}
+                </div>
+                <div className="text-xs text-[color:var(--qs-text-soft)]">
+                  {lang === "zh" ? "点击开始/停止音频" : "Tap to start/stop the audio"}
+                </div>
               </button>
-              <span className="text-xs text-[color:var(--qs-text-soft)]">
-                {lang === "zh" ? "温柔慢语 + 低频疗愈 + 轻微自然白噪" : "Soft voice + low-frequency bed + subtle nature noise"}
-              </span>
             </div>
 
             <audio ref={meditationVoiceRef} preload="auto" className="hidden" src="/audio/meditation-voice.mp3" />
