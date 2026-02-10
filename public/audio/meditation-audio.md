@@ -1,7 +1,9 @@
-# Meditation audio placeholders
+# Meditation audio sources
 
-Expected files (replace with generated audio):
-- meditation-voice.mp3 — whisper-soft guided meditation narration (slow pace)
-- meditation-bed.mp3 — low-frequency healing bed + subtle nature noise
+Current files:
+- meditation-voice.mp3 — sourced from Internet Archive (Guided Meditation: "Fall asleep.mp3")
+  https://archive.org/details/PowerfulMindfulnessMeditation
+- meditation-bed.mp3 — sourced from Internet Archive ("30 Min. Meditation Music for Positive Energy - Inner Peace Music Healing Music.mp3")
+  https://archive.org/details/30Min.MeditationMusicForPositiveEnergyInnerPeaceMusicHealingMusic
 
 These are referenced by the Meditation card in src/app/page.tsx.
