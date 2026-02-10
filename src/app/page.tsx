@@ -74,6 +74,10 @@ type Copy = {
   statusIdle: string;
   statusNotSet: string;
   noTimer: string;
+  meditation: string;
+  meditationTip: string;
+  meditationScript: string;
+  meditationNote: string;
   footer: string;
 };
 
@@ -120,6 +124,11 @@ const copy: Record<Lang, Copy> = {
     statusIdle: "未启动",
     statusNotSet: "未设置",
     noTimer: "不启用",
+    meditation: "冥想",
+    meditationTip: "轻柔引导 + 正向肯定语，适合睡前进入深度放松。开启冥想会自动关闭呼吸节奏、时长和背景噪音。",
+    meditationScript:
+      "找一个最舒服的姿势躺下。轻轻闭上眼睛，感受身体与床铺的接触。慢慢吸气，把温柔的能量带进身体；慢慢吐气，把白天的紧张与焦虑放出去。注意你的脚趾、脚背、小腿、大腿、腹部、肩颈与面颊，逐层放松，直到整个人像云一样柔软。\n\n我接受并爱护现在的自己，我值得拥有世间一切的美好。\n我拥有实现梦想的力量，我的生活正朝着积极的方向改变。\n我释放过去，原谅自己，我的内心充满了爱与光。\n我所追求的目标正在清晰地向我走来，我与宇宙的能量同频。\n\n每一次呼吸，都让你更安稳，更安心。",
+    meditationNote: "音频待接入：将温柔低语引导 + 低频疗愈音乐 + 轻微自然白噪混合后替换下方音轨。",
     footer: "无账户，本地存储偏好设置。",
   },
   en: {
@@ -164,6 +173,13 @@ const copy: Record<Lang, Copy> = {
     statusIdle: "Idle",
     statusNotSet: "Not set",
     noTimer: "No timer",
+    meditation: "Meditation",
+    meditationTip:
+      "Soft guidance + affirmations for deeper rest. Turning this on will disable breathing rhythm, timer, and background noise.",
+    meditationScript:
+      "Find a comfortable position and allow your eyes to soften. Inhale slowly, inviting calm in; exhale gently, releasing the day. Notice your toes, calves, thighs, belly, shoulders, jaw, and forehead. Let each place unwind and become light.\n\nI accept and cherish who I am. I deserve all the goodness life offers.\nI have the power to realize my dreams, and my life is moving in a positive direction.\nI release the past and forgive myself. My heart is filled with love and light.\nWhat I seek is coming toward me with clarity. I am aligned with the energy of the universe.\n\nWith every breath, you feel safer, softer, and more at ease.",
+    meditationNote:
+      "Audio placeholder: replace with a whisper-soft narration + low-frequency healing bed + subtle nature noise.",
     footer: "No account. Preferences stored locally.",
   },
 };
@@ -228,6 +244,7 @@ export default function Home() {
   const [noiseEnabled, setNoiseEnabled] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerMinutes, setTimerMinutes] = useState<number | null>(null);
+  const [meditationEnabled, setMeditationEnabled] = useState(false);
   const [phase, setPhase] = useState<"idle" | "inhale" | "hold" | "exhale">("idle");
   const [phaseRemaining, setPhaseRemaining] = useState<number | null>(null);
   const [phaseTotal, setPhaseTotal] = useState<number | null>(null);
@@ -244,6 +261,8 @@ export default function Home() {
   const [sessionRunning, setSessionRunning] = useState(false);
 
   const ambientAudioRef = useRef<HTMLAudioElement | null>(null);
+  const meditationVoiceRef = useRef<HTMLAudioElement | null>(null);
+  const meditationBedRef = useRef<HTMLAudioElement | null>(null);
   const cueTimeoutsRef = useRef<number[]>([]);
   const cycleTimeoutRef = useRef<number | null>(null);
   const sessionRunningRef = useRef(false);
@@ -332,6 +351,9 @@ export default function Home() {
         setTimerMinutes(parsed.timerMinutes);
         lastTimerRef.current = parsed.timerMinutes;
       }
+      if (parsed.meditationEnabled !== undefined) {
+        setMeditationEnabled(Boolean(parsed.meditationEnabled));
+      }
       if (parsed.rhythmId) {
         lastGuideRef.current = parsed.rhythmId;
       }
@@ -355,9 +377,10 @@ export default function Home() {
         noiseEnabled,
         timerEnabled,
         timerMinutes,
+        meditationEnabled,
       })
     );
-  }, [lang, themeMode, rhythmId, customRhythm, noiseType, guideEnabled, noiseEnabled, timerEnabled, timerMinutes]);
+  }, [lang, themeMode, rhythmId, customRhythm, noiseType, guideEnabled, noiseEnabled, timerEnabled, timerMinutes, meditationEnabled]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -438,6 +461,25 @@ export default function Home() {
     audio.currentTime = 0;
   }, []);
 
+  const stopMeditationAudio = useCallback(() => {
+    meditationVoiceRef.current?.pause();
+    meditationBedRef.current?.pause();
+    if (meditationVoiceRef.current) meditationVoiceRef.current.currentTime = 0;
+    if (meditationBedRef.current) meditationBedRef.current.currentTime = 0;
+  }, []);
+
+  const startMeditationAudio = useCallback(() => {
+    if (!meditationEnabled) return;
+    if (!meditationVoiceRef.current || !meditationBedRef.current) return;
+    meditationBedRef.current.loop = true;
+    meditationBedRef.current.volume = 0.35;
+    meditationVoiceRef.current.volume = 0.9;
+    meditationBedRef.current.currentTime = 0;
+    meditationVoiceRef.current.currentTime = 0;
+    void meditationBedRef.current.play();
+    void meditationVoiceRef.current.play();
+  }, [meditationEnabled]);
+
   useEffect(() => {
     if (!sessionRunning) return;
     if (!noiseEnabled || noiseType === "none") {
@@ -446,6 +488,14 @@ export default function Home() {
     }
     startNoise();
   }, [noiseType, noiseEnabled, sessionRunning, startNoise, stopNoise]);
+
+  useEffect(() => {
+    if (!meditationEnabled) {
+      stopMeditationAudio();
+      return;
+    }
+    startMeditationAudio();
+  }, [meditationEnabled, startMeditationAudio, stopMeditationAudio]);
 
   const playVoice = useCallback((type: "inhale" | "hold" | "exhale") => {
     if (!guideEnabled) return;
@@ -562,6 +612,11 @@ export default function Home() {
     stopNoise();
   }, [clearCues, stopNoise]);
 
+  const disableMeditation = useCallback(() => {
+    setMeditationEnabled(false);
+    stopMeditationAudio();
+  }, [stopMeditationAudio]);
+
   useEffect(() => {
     if (!timerRunning) return;
     const id = window.setInterval(() => {
@@ -583,8 +638,18 @@ export default function Home() {
     }
   }, [timerEnabled]);
 
+  useEffect(() => {
+    if (guideEnabled || noiseEnabled || timerEnabled) {
+      disableMeditation();
+    }
+  }, [guideEnabled, noiseEnabled, timerEnabled, disableMeditation]);
+
   const startSession = () => {
     if (sessionRunning) return;
+    if (meditationEnabled) {
+      setMeditationEnabled(false);
+      stopMeditationAudio();
+    }
     if (guideEnabled) ensureVoice();
     startNoise();
     if (timerEnabled && timerMinutes) {
@@ -607,6 +672,20 @@ export default function Home() {
     } else {
       startSession();
     }
+  };
+
+  const handleMeditationToggle = (next: boolean) => {
+    if (next) {
+      stopSession();
+      setGuideEnabled(false);
+      setNoiseEnabled(false);
+      setTimerEnabled(false);
+      setTimerMinutes(null);
+      setMeditationEnabled(true);
+      return;
+    }
+    setMeditationEnabled(false);
+    stopMeditationAudio();
   };
 
   const cycleTheme = () => {
@@ -755,6 +834,9 @@ export default function Home() {
                   checked={guideEnabled}
                   onChange={(e) => {
                     const next = e.target.checked;
+                    if (next) {
+                      disableMeditation();
+                    }
                     setGuideEnabled(next);
                     if (!next) {
                       clearCues();
@@ -862,6 +944,9 @@ export default function Home() {
                   checked={timerEnabled}
                   onChange={(e) => {
                     const next = e.target.checked;
+                    if (next) {
+                      disableMeditation();
+                    }
                     setTimerEnabled(next);
                     if (!next) {
                       setTimerMinutes(null);
@@ -916,6 +1001,9 @@ export default function Home() {
                   checked={noiseEnabled}
                   onChange={(e) => {
                     const next = e.target.checked;
+                    if (next) {
+                      disableMeditation();
+                    }
                     setNoiseEnabled(next);
                     if (!next) {
                       stopNoise();
@@ -953,6 +1041,40 @@ export default function Home() {
                 </button>
               ))}
             </div>
+          </section>
+
+          <section className="rounded-3xl bg-[color:var(--qs-card)] p-6 shadow-sm md:col-span-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold">{t.meditation}</h2>
+                <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.meditationTip}</p>
+              </div>
+              <label className="qs-switch">
+                <input
+                  type="checkbox"
+                  checked={meditationEnabled}
+                  onChange={(e) => handleMeditationToggle(e.target.checked)}
+                />
+                <span className="qs-slider" />
+              </label>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr,1fr]">
+              <div className="rounded-2xl border border-[color:var(--qs-border)] bg-[color:var(--qs-panel-bg)] p-4 text-sm leading-relaxed whitespace-pre-line">
+                {t.meditationScript}
+              </div>
+              <div className="rounded-2xl border border-dashed border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] p-4 text-sm text-[color:var(--qs-text-secondary)]">
+                <div className="text-sm font-medium text-[color:var(--qs-text)]">{t.meditationNote}</div>
+                <p className="mt-2 text-xs text-[color:var(--qs-text-muted)]">
+                  {lang === "zh"
+                    ? "建议音频配置：温柔空灵女声 + 极慢语速 + 低频疗愈铺底 + 微弱流水/微风。"
+                    : "Recommended audio: whisper-soft female voice, slow pacing, low-frequency bed, faint water/wind."}
+                </p>
+              </div>
+            </div>
+
+            <audio ref={meditationVoiceRef} preload="auto" className="hidden" src="/audio/meditation-voice.mp3" />
+            <audio ref={meditationBedRef} preload="auto" className="hidden" src="/audio/meditation-bed.mp3" />
           </section>
 
         </main>
