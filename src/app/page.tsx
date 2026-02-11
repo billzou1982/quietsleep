@@ -1151,7 +1151,7 @@ export default function Home() {
                     type="button"
                     onClick={() => selectMeditationTrack(track.voiceSrc, track.id)}
                     className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
-                      activeMeditationId === track.id
+                      meditationEnabled && activeMeditationId === track.id
                         ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
                         : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
                     }`}
