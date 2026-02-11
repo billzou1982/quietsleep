@@ -150,7 +150,7 @@ const copy: Record<Lang, Copy> = {
     holdWord: "Hold",
     exhaleWord: "Exhale",
     seconds: "sec",
-    noise: "Sleep Noise",
+    noise: "Sleep Sounds",
     noiseTip: "Voice cues can play together with ambience.",
     noiseNone: "None",
     white: "White Noise",
