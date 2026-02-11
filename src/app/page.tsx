@@ -387,7 +387,7 @@ export default function Home() {
     root.dataset.theme = themeMode;
     const meta = document.querySelector('meta[name="theme-color"]');
     const setThemeColor = (isDark: boolean) => {
-      const color = isDark ? "#0b1120" : "#fafaf9";
+      const color = isDark ? "#0b1120" : "#f7f8f5";
       meta?.setAttribute("content", color);
       root.style.backgroundColor = color;
       document.body.style.backgroundColor = color;
