@@ -1050,7 +1050,7 @@ export default function Home() {
                   }}
                   className={`rounded-2xl border px-3 py-2 text-sm transition ${
                     timerEnabled && timerMinutes === option.value
-                      ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
+                      ? "border-[color:var(--qs-accent)] bg-[color:var(--qs-accent)] text-[color:var(--qs-button-text)]"
                       : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
                   }`}
                 >
@@ -1109,7 +1109,7 @@ export default function Home() {
                   }}
                   className={`rounded-2xl border px-4 py-2 text-sm transition ${
                     noiseEnabled && noiseType === type
-                      ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
+                      ? "border-[color:var(--qs-accent)] bg-[color:var(--qs-accent)] text-[color:var(--qs-button-text)]"
                       : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
                   }`}
                 >
