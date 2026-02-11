@@ -515,6 +515,7 @@ export default function Home() {
   );
 
   useEffect(() => {
+    if (!meditationEnabled) return;
     if (!visibleMeditationTracks.length) return;
     const exists = visibleMeditationTracks.some((track) => track.id === activeMeditationId);
     if (exists) return;
@@ -523,7 +524,7 @@ export default function Home() {
     if (meditationVoiceRef.current) {
       meditationVoiceRef.current.src = fallback.voiceSrc;
     }
-  }, [activeMeditationId, visibleMeditationTracks]);
+  }, [activeMeditationId, meditationEnabled, visibleMeditationTracks]);
 
   const playVoice = useCallback((type: "inhale" | "hold" | "exhale") => {
     if (!guideEnabled) return;
