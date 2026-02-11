@@ -139,7 +139,7 @@ const copy: Record<Lang, Copy> = {
     themeSystem: "System",
     themeDay: "Day",
     themeNight: "Night",
-    breathe: "Sleep Guide",
+    breathe: "Breathing Exercise",
     breatheTip: "Pick a rhythm and duration. Circle size reflects your breath time.",
     rhythm: "Breathing rhythm",
     custom: "Custom",
@@ -958,9 +958,6 @@ export default function Home() {
                   <div className="font-medium">
                     {lang === "zh" ? preset.zh : preset.en}
                   </div>
-                  <div className="text-xs text-[color:var(--qs-text-soft)]">
-                    {t.inhale} {preset.inhale}{t.seconds} · {t.hold} {preset.hold}{t.seconds} · {t.exhale} {preset.exhale}{t.seconds}
-                  </div>
                 </button>
               ))}
               <button
@@ -977,9 +974,6 @@ export default function Home() {
                 }`}
               >
                 <div className="font-medium">{t.custom}</div>
-                <div className="text-xs text-[color:var(--qs-text-soft)]">
-                  {t.inhale} {customRhythm.inhale}{t.seconds} · {t.hold} {customRhythm.hold}{t.seconds} · {t.exhale} {customRhythm.exhale}{t.seconds}
-                </div>
               </button>
             </div>
 
