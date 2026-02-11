@@ -500,13 +500,29 @@ export default function Home() {
 
   const meditationTracks = useMemo(
     () => [
-      { id: "en-1", label: `${t.meditationEn} 1`, voiceSrc: "/audio/meditation-voice.mp3" },
-      { id: "en-2", label: `${t.meditationEn} 2`, voiceSrc: "/audio/meditation-voice.mp3" },
-      { id: "zh-1", label: `${t.meditationZh} 1`, voiceSrc: "/audio/meditation-zh-1.mp3" },
-      { id: "zh-2", label: `${t.meditationZh} 2`, voiceSrc: "/audio/meditation-zh-2.mp3" },
+      { id: "en-1", lang: "en" as const, label: `${t.meditationEn} 1`, voiceSrc: "/audio/meditation-voice.mp3" },
+      { id: "en-2", lang: "en" as const, label: `${t.meditationEn} 2`, voiceSrc: "/audio/meditation-bed.mp3" },
+      { id: "zh-1", lang: "zh" as const, label: `${t.meditationZh} 1`, voiceSrc: "/audio/meditation-zh-1.mp3" },
+      { id: "zh-2", lang: "zh" as const, label: `${t.meditationZh} 2`, voiceSrc: "/audio/meditation-zh-2.mp3" },
     ],
     [t.meditationEn, t.meditationZh]
   );
+
+  const visibleMeditationTracks = useMemo(
+    () => meditationTracks.filter((track) => track.lang === lang),
+    [meditationTracks, lang]
+  );
+
+  useEffect(() => {
+    if (!visibleMeditationTracks.length) return;
+    const exists = visibleMeditationTracks.some((track) => track.id === activeMeditationId);
+    if (exists) return;
+    const fallback = visibleMeditationTracks[0];
+    setActiveMeditationId(fallback.id);
+    if (meditationVoiceRef.current) {
+      meditationVoiceRef.current.src = fallback.voiceSrc;
+    }
+  }, [activeMeditationId, visibleMeditationTracks]);
 
   const playVoice = useCallback((type: "inhale" | "hold" | "exhale") => {
     if (!guideEnabled) return;
@@ -604,7 +620,12 @@ export default function Home() {
       setRemaining(0);
       return;
     }
-    if (!sessionRunningRef.current) return;
+    const hasActivePlayback = sessionRunningRef.current || meditationPlaying;
+    if (!hasActivePlayback) {
+      setTimerRunning(false);
+      setRemaining(0);
+      return;
+    }
     if (!timerMinutes) {
       setTimerRunning(false);
       setRemaining(0);
@@ -612,7 +633,7 @@ export default function Home() {
     }
     setRemaining(timerMinutes * 60);
     setTimerRunning(true);
-  }, [timerEnabled, timerMinutes]);
+  }, [timerEnabled, timerMinutes, meditationPlaying]);
 
   const stopSession = useCallback(() => {
     setSessionRunning(false);
@@ -633,6 +654,9 @@ export default function Home() {
     const id = window.setInterval(() => {
       setRemaining((prev) => {
         if (prev <= 1) {
+          if (meditationPlaying) {
+            stopMeditationAudio();
+          }
           stopSession();
           return 0;
         }
@@ -640,7 +664,7 @@ export default function Home() {
       });
     }, 1000);
     return () => window.clearInterval(id);
-  }, [stopSession, timerRunning]);
+  }, [meditationPlaying, stopMeditationAudio, stopSession, timerRunning]);
 
   useEffect(() => {
     if (!timerEnabled) {
@@ -650,10 +674,10 @@ export default function Home() {
   }, [timerEnabled]);
 
   useEffect(() => {
-    if (guideEnabled || noiseEnabled || timerEnabled) {
+    if (guideEnabled || noiseEnabled) {
       disableMeditation();
     }
-  }, [guideEnabled, noiseEnabled, timerEnabled, disableMeditation]);
+  }, [guideEnabled, noiseEnabled, disableMeditation]);
 
   const startSession = () => {
     if (sessionRunning) return;
@@ -679,8 +703,8 @@ export default function Home() {
 
   const toggleSession = () => {
     if (meditationEnabled) {
-      const fallback = meditationTracks[0];
-      const target = meditationTracks.find((track) => track.id === activeMeditationId) ?? fallback;
+      const fallback = visibleMeditationTracks[0];
+      const target = visibleMeditationTracks.find((track) => track.id === activeMeditationId) ?? fallback;
       if (target) {
         toggleMeditationPlayback(target.voiceSrc, target.id);
       }
@@ -698,11 +722,9 @@ export default function Home() {
       stopSession();
       setGuideEnabled(false);
       setNoiseEnabled(false);
-      setTimerEnabled(false);
-      setTimerMinutes(null);
       setMeditationEnabled(true);
       if (!activeMeditationId) {
-        const fallback = meditationTracks[0];
+        const fallback = visibleMeditationTracks[0];
         if (fallback) {
           setActiveMeditationId(fallback.id);
           if (meditationVoiceRef.current) {
@@ -734,7 +756,16 @@ export default function Home() {
       handleMeditationToggle(true);
     }
     setActiveMeditationId(meditationId);
-    meditationVoiceRef.current && (meditationVoiceRef.current.src = voiceSrc);
+    if (meditationVoiceRef.current) {
+      meditationVoiceRef.current.src = voiceSrc;
+    }
+
+    const fallback = minuteOptions[0].value;
+    const chosen = lastTimerRef.current ?? timerMinutes ?? fallback;
+    setTimerEnabled(true);
+    setTimerMinutes(chosen);
+    lastTimerRef.current = chosen;
+
     if (meditationPlaying) {
       startMeditationAudio(voiceSrc, meditationId);
     }
@@ -1112,7 +1143,7 @@ export default function Home() {
 
             <div className="mt-4">
               <div className="grid gap-3 md:grid-cols-2">
-                {meditationTracks.map((track) => (
+                {visibleMeditationTracks.map((track) => (
                   <button
                     key={track.id}
                     type="button"
