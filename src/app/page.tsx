@@ -474,6 +474,7 @@ export default function Home() {
     if (!meditationVoiceRef.current || !meditationBedRef.current) return;
     meditationVoiceRef.current.src = voiceSrc;
     meditationBedRef.current.loop = true;
+    meditationVoiceRef.current.loop = true;
     meditationBedRef.current.volume = 0.35;
     meditationVoiceRef.current.volume = 0.9;
     meditationBedRef.current.currentTime = 0;
