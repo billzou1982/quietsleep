@@ -911,7 +911,6 @@ export default function Home() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold">{t.breathe}</h2>
-                <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.breatheTip}</p>
               </div>
               <label className="qs-switch">
                 <input
@@ -1021,7 +1020,6 @@ export default function Home() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold">{t.timer}</h2>
-                <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.timerTip}</p>
               </div>
               <label className="qs-switch">
                 <input
@@ -1078,7 +1076,6 @@ export default function Home() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold">{t.noise}</h2>
-                <p className="mt-2 text-sm text-[color:var(--qs-text-muted)]">{t.noiseTip}</p>
               </div>
               <label className="qs-switch">
                 <input
