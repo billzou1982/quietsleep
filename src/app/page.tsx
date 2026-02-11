@@ -291,7 +291,8 @@ export default function Home() {
   const holdPercent = ((rhythm.inhale + rhythm.hold) / cycleSeconds) * 100;
   const runningBaseSize = 180;
   const idleCircleSize = 220;
-  const displayCircleSize = sessionRunning ? runningBaseSize : idleCircleSize;
+  const circleActive = sessionRunning || meditationPlaying;
+  const displayCircleSize = circleActive ? runningBaseSize : idleCircleSize;
   const maxDiameter = runningBaseSize + (rhythm.inhale - 1) * 15;
   const circleScale = maxDiameter / runningBaseSize;
   const phaseLabel =
@@ -893,7 +894,7 @@ export default function Home() {
           >
             <div className="flex flex-col items-center justify-center gap-1 px-6">
               <span className="text-xl font-semibold text-[color:var(--qs-text)] md:text-2xl">
-                {sessionRunning && guideEnabled ? phaseLabel : sessionRunning ? t.stop : t.start}
+                {sessionRunning && guideEnabled ? phaseLabel : circleActive ? t.stop : t.start}
               </span>
               {sessionRunning && guideEnabled && phaseRemaining !== null && (
                 <span className="text-2xl font-semibold text-[color:var(--qs-text)] md:text-3xl">
