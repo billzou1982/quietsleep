@@ -125,9 +125,9 @@ const copy: Record<Lang, Copy> = {
     statusNotSet: "未设置",
     noTimer: "不启用",
     meditation: "冥想",
-    meditationEn: "冥想（EN）",
+    meditationEn: "冥想（英文）",
     meditationZh: "冥想（中文）",
-    meditationHint: "点击标题框开始/停止音频",
+    meditationHint: "",
     footer: "无账户，本地存储偏好设置。",
   },
   en: {
@@ -174,8 +174,8 @@ const copy: Record<Lang, Copy> = {
     noTimer: "No timer",
     meditation: "Meditation",
     meditationEn: "Meditation (EN)",
-    meditationZh: "Meditation (中文)",
-    meditationHint: "Tap the tile to start/stop audio",
+    meditationZh: "Meditation (CN)",
+    meditationHint: "",
     footer: "No account. Preferences stored locally.",
   },
 };
@@ -678,6 +678,14 @@ export default function Home() {
   };
 
   const toggleSession = () => {
+    if (meditationEnabled) {
+      const fallback = meditationTracks[0];
+      const target = meditationTracks.find((track) => track.id === activeMeditationId) ?? fallback;
+      if (target) {
+        toggleMeditationPlayback(target.voiceSrc, target.id);
+      }
+      return;
+    }
     if (sessionRunning) {
       stopSession();
     } else {
@@ -693,6 +701,15 @@ export default function Home() {
       setTimerEnabled(false);
       setTimerMinutes(null);
       setMeditationEnabled(true);
+      if (!activeMeditationId) {
+        const fallback = meditationTracks[0];
+        if (fallback) {
+          setActiveMeditationId(fallback.id);
+          if (meditationVoiceRef.current) {
+            meditationVoiceRef.current.src = fallback.voiceSrc;
+          }
+        }
+      }
       return;
     }
     setMeditationEnabled(false);
@@ -710,6 +727,17 @@ export default function Home() {
       return;
     }
     startMeditationAudio(voiceSrc, meditationId);
+  };
+
+  const selectMeditationTrack = (voiceSrc: string, meditationId: string) => {
+    if (!meditationEnabled) {
+      handleMeditationToggle(true);
+    }
+    setActiveMeditationId(meditationId);
+    meditationVoiceRef.current && (meditationVoiceRef.current.src = voiceSrc);
+    if (meditationPlaying) {
+      startMeditationAudio(voiceSrc, meditationId);
+    }
   };
 
   const cycleTheme = () => {
@@ -1088,15 +1116,14 @@ export default function Home() {
                   <button
                     key={track.id}
                     type="button"
-                    onClick={() => toggleMeditationPlayback(track.voiceSrc, track.id)}
+                    onClick={() => selectMeditationTrack(track.voiceSrc, track.id)}
                     className={`rounded-2xl border px-4 py-3 text-left text-sm transition ${
-                      meditationPlaying && activeMeditationId === track.id
+                      activeMeditationId === track.id
                         ? "border-[color:var(--qs-accent-border)] bg-[color:var(--qs-accent-soft)] text-[color:var(--qs-accent-strong)]"
                         : "border-[color:var(--qs-border)] text-[color:var(--qs-text-muted)] hover:border-[color:var(--qs-accent-border)]"
                     }`}
                   >
                     <div className="font-medium">{track.label}</div>
-                    <div className="text-xs text-[color:var(--qs-text-soft)]">{t.meditationHint}</div>
                   </button>
                 ))}
               </div>
