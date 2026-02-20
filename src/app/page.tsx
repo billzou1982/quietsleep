@@ -575,12 +575,14 @@ export default function Home() {
 
     startPhase("inhale", rhythm.inhale);
     playVoice("inhale");
-    cueTimeoutsRef.current.push(
-      window.setTimeout(() => {
-        startPhase("hold", rhythm.hold);
-        playVoice("hold");
-      }, inhaleMs)
-    );
+    if (holdMs > 0) {
+      cueTimeoutsRef.current.push(
+        window.setTimeout(() => {
+          startPhase("hold", rhythm.hold);
+          playVoice("hold");
+        }, inhaleMs)
+      );
+    }
     cueTimeoutsRef.current.push(
       window.setTimeout(() => {
         startPhase("exhale", rhythm.exhale);
@@ -989,7 +991,7 @@ export default function Home() {
                     <div className="flex items-center gap-3">
                       <input
                         type="range"
-                        min={2}
+                        min={key === "hold" ? 0 : 2}
                         max={10}
                         step={1}
                         value={customRhythm[key]}
