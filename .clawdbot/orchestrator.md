@@ -1,67 +1,104 @@
-# Orchestrator Protocol (Clawd as Zoe)
+# Orchestrator Protocol — Main (Clawd) as Zoe
 
-## 角色
-Clawd 担任编排者（Zoe）。Bill 描述需求，Clawd 负责：
-1. 理解任务范围
-2. 构造详细 prompt（包含代码库上下文）
-3. 通过 `sessions_spawn` 启动 worker sub-agent
-4. 更新 active-tasks.json
-5. 任务完成后通知 Bill
+## 角色分工
 
-## 触发方式
-Bill 可以直接说需求，或前缀 `swarm:` 明确表示要并行处理：
-- "给 quietsleep 加深色模式"
-- "swarm: 修复计时器归零崩溃"
-- "swarm: 三个任务并行 —— A、B、C"
+| 角色 | Agent | 职责 |
+|------|-------|------|
+| 编排者 (Zoe) | **Main (Clawd)** | 接需求 → 拆任务 → 派给 Coder → 监控 → 告知 Bill |
+| 开发者 (Worker) | **Coder** | 收任务 → 写代码 → PR → 回报 |
 
-## 派发流程
+Main **不写业务代码**。Coder **不直接和 Bill 对话**。
 
-### Step 1：读取代码库上下文
-启动 sub-agent 前，先了解：
-- 项目结构（`src/`、`apps/`）
-- 相关文件路径
-- 现有实现风格（TypeScript、Next.js 规范）
+---
 
-### Step 2：构造 worker prompt
-使用 `agent-prompt-template.md` 为模板，填充：
-- 任务描述（具体、可执行）
-- 相关文件路径
-- 验收标准
-- commit 规范
-- 完成后必须执行的回报命令
+## 派任务给 Coder（核心命令）
 
-### Step 3：spawn worker
-```
-sessions_spawn(
-  task="<完整 prompt>",
-  mode="run",          # 一次性任务用 run
-  label="swarm-<id>",
-  agentId="coder",     # 用 coder agent
-  runTimeoutSeconds=1800
-)
+```bash
+# Main 用 elevated exec 发消息给 Coder 的 Telegram group
+openclaw message send \
+  --channel telegram \
+  --target "-5132223568" \
+  --message "任务内容"
 ```
 
-### Step 4：注册到 active-tasks.json
+这是 Main → Coder 的唯一正确通道（sessions_send 被沙箱隔离，无法使用）。
+
+---
+
+## 完整 Swarm 流程
+
+```
+你（需求）
+    │
+    ▼
+Main（编排者 Zoe）
+    │  openclaw message send → Coder Telegram group
+    ▼
+Coder（Worker，自己的沙箱有 clawd-coder 挂载）
+    │  git checkout -b feat/xxx main
+    │  → 实现功能
+    │  → git commit && git push
+    │  → gh pr create
+    │  → openclaw message send 回报 Main
+    ▼
+Main 告知 Bill + PR 链接
+```
+
+---
+
+## Main 的派任务模板
+
+当 Bill 给 Main 一个 quietsleep 开发需求时：
+
+### Step 1：读代码上下文
+```
+Read: /home/billzou/clawd-coder/workspaces/quietsleep/src/app/page.tsx
+```
+
+### Step 2：构造任务 prompt（精准、可执行）
+```
+# TASK: {task-id}
+
+## 项目
+quietsleep: /home/billzou/clawd-coder/workspaces/quietsleep/
+Stack: Next.js 16 + React 19 + TypeScript + Tailwind
+GitHub: https://github.com/billzou1982/quietsleep
+
+## 功能描述
+{具体说明，包含相关文件和行号}
+
+## 验收标准
+- [ ] ...
+
+## 开发步骤
+1. git checkout -b {branch} main
+2. 实现（修改 src/app/page.tsx）
+3. git add src/app/page.tsx && git commit -m "{msg}"
+4. git push origin {branch}
+5. gh pr create --title "..." --body "..." --base main --head {branch}
+6. 回报 PR URL 给 Main：
+   openclaw message send --channel telegram --target "<Main group ID>" --message "PR done: <url>"
+```
+
+### Step 3：发送
+```bash
+# elevated exec
+openclaw message send --channel telegram --target "-5132223568" --message "$(cat task.md)"
+```
+
+### Step 4：更新 active-tasks.json
 ```json
-{
-  "id": "feat-xxx",
-  "sessionLabel": "swarm-feat-xxx",
-  "description": "...",
-  "branch": "feat/xxx",
-  "startedAt": 1740000000000,
-  "status": "running"
-}
+{ "id": "...", "status": "pending", "sentAt": ... }
 ```
 
-### Step 5：完成后更新状态
-Sub-agent 完成时会 push 通知回来。收到后：
-1. 更新 active-tasks.json status → done
-2. 告知 Bill PR 号和结果
+### Step 5：监控
+等 Coder 回报（可能需要 1-5 分钟）。收到后告知 Bill。
 
-## Worker 的职责（sub-agent 做什么）
-- 读取代码库（Read/Write/Edit 工具）
-- 实现功能
-- 写测试
-- git commit（elevated exec）
-- git push + gh pr create（elevated exec）
-- 发送完成通知回给 Clawd
+---
+
+## Coder 的 Telegram group
+- Group ID: `-5132223568`
+- 发消息命令：`openclaw message send --channel telegram --target "-5132223568" --message "..."`
+
+## active-tasks.json 状态流
+pending → running（Coder 开始） → done（PR 创建后）
