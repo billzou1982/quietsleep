@@ -184,6 +184,7 @@ const presets: RhythmPreset[] = [
   { id: "box", zh: "Box 4-4-4", en: "Box 4-4-4", inhale: 4, hold: 4, exhale: 4 },
   { id: "478", zh: "经典 4-7-8", en: "Classic 4-7-8", inhale: 4, hold: 7, exhale: 8 },
   { id: "relax", zh: "舒缓 4-4-6", en: "Relax 4-4-6", inhale: 4, hold: 4, exhale: 6 },
+  { id: "balance-5-0-5", zh: "均衡 5-0-5", en: "Balance 5-0-5", inhale: 5, hold: 0, exhale: 5 },
 ];
 
 const minuteOptions = [
