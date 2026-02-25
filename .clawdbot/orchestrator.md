@@ -1,67 +1,68 @@
-# Orchestrator Protocol (Clawd as Zoe)
+# Orchestrator Protocol — Main (Clawd) as Zoe
 
-## 角色
-Clawd 担任编排者（Zoe）。Bill 描述需求，Clawd 负责：
-1. 理解任务范围
-2. 构造详细 prompt（包含代码库上下文）
-3. 通过 `sessions_spawn` 启动 worker sub-agent
-4. 更新 active-tasks.json
-5. 任务完成后通知 Bill
+## 角色分工
 
-## 触发方式
-Bill 可以直接说需求，或前缀 `swarm:` 明确表示要并行处理：
-- "给 quietsleep 加深色模式"
-- "swarm: 修复计时器归零崩溃"
-- "swarm: 三个任务并行 —— A、B、C"
+| 角色 | Agent | 职责 |
+|------|-------|------|
+| 编排者 (Zoe) | **Main (Clawd)** | 接收需求 / 拆任务 / 写 inbox / 监控进度 / 告知 Bill |
+| 开发者 (Worker) | **Coder** | 读 inbox / 写代码 / 建 PR / 写 outbox |
 
-## 派发流程
+Main **不写业务代码**。Coder **不直接和 Bill 对话**。
 
-### Step 1：读取代码库上下文
-启动 sub-agent 前，先了解：
-- 项目结构（`src/`、`apps/`）
-- 相关文件路径
-- 现有实现风格（TypeScript、Next.js 规范）
+---
 
-### Step 2：构造 worker prompt
-使用 `agent-prompt-template.md` 为模板，填充：
-- 任务描述（具体、可执行）
-- 相关文件路径
-- 验收标准
-- commit 规范
-- 完成后必须执行的回报命令
+## Main 的派发流程
 
-### Step 3：spawn worker
-```
-sessions_spawn(
-  task="<完整 prompt>",
-  mode="run",          # 一次性任务用 run
-  label="swarm-<id>",
-  agentId="coder",     # 用 coder agent
-  runTimeoutSeconds=1800
-)
-```
+### Step 1：理解任务
+- 读取相关代码（Read 工具）
+- 明确验收标准
+- 拆成独立可执行的子任务
 
-### Step 4：注册到 active-tasks.json
-```json
-{
-  "id": "feat-xxx",
-  "sessionLabel": "swarm-feat-xxx",
-  "description": "...",
-  "branch": "feat/xxx",
-  "startedAt": 1740000000000,
-  "status": "running"
-}
+### Step 2：写 inbox 任务文件
+路径：`/home/billzou/clawd-coder/inbox/{task-id}.md`
+
+模板：
+```markdown
+# TASK: {task-id}
+## 描述
+{具体、可执行的功能说明}
+
+## 相关文件
+- src/app/page.tsx（第 xxx 行附近）
+
+## 验收标准
+- [ ] 功能 A 正常
+- [ ] 不破坏现有功能
+
+## 分支名
+feat/{task-id}
+
+## PR 标题
+feat: {简短描述}
 ```
 
-### Step 5：完成后更新状态
-Sub-agent 完成时会 push 通知回来。收到后：
-1. 更新 active-tasks.json status → done
-2. 告知 Bill PR 号和结果
+### Step 3：等待 Coder 处理
+Coder 在下次 heartbeat（每 60 分钟）或被唤醒时处理。
+告知 Bill："任务已派给 Coder，最多 60 分钟内处理。"
 
-## Worker 的职责（sub-agent 做什么）
-- 读取代码库（Read/Write/Edit 工具）
-- 实现功能
-- 写测试
-- git commit（elevated exec）
-- git push + gh pr create（elevated exec）
-- 发送完成通知回给 Clawd
+### Step 4：监控进度
+Coder 完成后在 outbox/ 写结果文件。Main 检查：
+```bash
+ls /home/billzou/clawd-coder/outbox/
+cat /home/billzou/clawd-coder/outbox/{task-id}_DONE.md
+```
+
+### Step 5：告知 Bill
+把 PR 链接、完成内容转告 Bill。
+
+---
+
+## active-tasks.json 维护
+- 写 inbox 时：Main 更新 status = "pending"
+- Coder 开始时：Coder 更新 status = "running"
+- PR 创建后：Coder 更新 status = "done", pr = PR号
+
+---
+
+## 紧急/简单任务的例外
+单行 hotfix / 配置变更，Main 可直接用 `exec elevated=true` 操作，无需走 inbox。
